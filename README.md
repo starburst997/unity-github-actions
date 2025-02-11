@@ -1,6 +1,6 @@
 # unity-github-actions
 
-Build and publish your [Unity](https://unity.com/) app using [Github Actions](https://github.com/features/actions) via [GameCI](https://game.ci/).
+Build and publish your [Unity](https://unity.com/) app using [Github Actions](https://github.com/features/actions) via [GameCI](https://game.ci/). Use [this repo](https://github.com/starburst997/unity-github-actions) as a template to get started.
 
 When you'll be done and setup, this project should be able to build your app for all the major platforms supported by Unity \**except consoles*\* (**Windows**, **macOS**, **Linux**, **iOS**, **Android**, **WebGL**) (**mono** or **IL2CPP** for desktops). You'll have an automatic workflow to publish your app to the **macOS / iOS App Store**, **Google Play Store** and hosting on **S3**. No need to own a Mac or maintain an external web server! A browser is all you need.
 
