@@ -1,6 +1,6 @@
 GIT
   remote: https://github.com/starburst997/fastlane-plugin-github_action
-  revision: 8af1ff59aeca56414114d11cf55bde24a6cb0f66
+  revision: 2ab02c6cfa14a4988bef1c5a9dee2af6ae69d178
   specs:
     fastlane-plugin-github_action (1.1.0)
       dotenv
