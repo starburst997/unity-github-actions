@@ -1,40 +1,268 @@
-name: Build Linux (IL2CPP)
+name: Build Linux
+
+env:
+  UNITY_PATH: ${{ vars.APP_UNITY_PATH }}
+  UNITY_VERSION: ${{ vars.APP_UNITY_VERSION }}
+  DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+  DISCORD_COLOR: "#f8bf11"
 
 on: 
-  workflow_dispatch:
+  workflow_call:
+    outputs:
+      zip-name: 
+        value: ${{ jobs.post-build.outputs.zip-name }}
+      zip-url: 
+        value: ${{ jobs.post-build.outputs.zip-url }}
+      zip-size: 
+        value: ${{ jobs.post-build.outputs.zip-size }}
+      links: 
+        value: ${{ jobs.post-build.outputs.links }}
     inputs:
       notes:
+        default: ''
         type: string
-        description: Release Notes
       upload-artifact:
-        description: "Get an artifact to download"
-        type: choice
         default: 'false'
-        options:
-          - true
-          - false
+        type: string
+      il2cpp:
+        default: '0'
+        type: string
+      library:
+        default: 'Library-Linux'
+        type: string
+      artifact:
+        default: 'build-linux'
+        type: string
+      s3-folder:
+        default: 'linux'
+        type: string
+      zip-suffix:
+        default: '.linux.zip'
+        type: string
+      discord:
+        default: 'Linux'
+        type: string
       release:
-        description: "Release Candidate"
-        type: choice
         default: 'false'
-        options:
-          - true
-          - false
+        type: string
+      timeout:
+        default: 30
+        type: number
+      runner:
+        default: 'ubuntu-latest'
+        type: string
+      runner-extra:
+        default: 'ubuntu-latest'
+        type: string
 
 jobs:
-  build:
-    uses: starburst997/unity-github-actions/.github/workflows/linux.yml@v1
+  version:
+    uses: starburst997/yearly-version/.github/workflows/version.yml@v1
     secrets: inherit
     with:
-      runner: 'self-hosted' # 'ubuntu-latest'
-      runner-extra: 'self-hosted' # 'ubuntu-latest'
-      il2cpp: '1'
-      library: 'Library-Linux'
-      artifact: 'build-linux'
-      s3-folder: 'linux'
-      zip-suffix: '.linux.zip'
-      discord: 'Linux (IL2CPP)'
-      timeout: 45
-      notes: ${{ inputs.notes }}
-      release: ${{ inputs.release }}
-      upload-artifact: ${{ inputs.upload-artifact }}
+      increment: false
+      runner: ${{ inputs.runner-extra }}
+      build-var: LINUX_BUILD_NUMBER
+
+  build:
+    name: Build Linux
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeout }}
+    needs: [version]
+    outputs:
+      discord: ${{ steps.output.outputs.discord }}
+      s3: ${{ steps.output.outputs.s3 }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.GH_PAT }}
+          lfs: true
+
+      - uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: ${{ env.UNITY_PATH }}/Library
+          key: ${{ inputs.library }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+      - run: pip install -r requirements.txt
+
+      - name: Change package name / set il2cpp
+        run: python scripts/workflows/update-project.py ${{ env.UNITY_PATH }} ${{ vars.IOS_BUNDLE_ID }} ${{ vars.MAC_BUNDLE_ID }} ${{ vars.ANDROID_PACKAGE_NAME }} ${{ inputs.il2cpp }} ${{ needs.version.outputs.build }}
+
+      - name: Create directory first to prevent permission error
+        run:  |
+          rm -Rf build
+          mkdir build
+
+      - name: Build project
+        uses: starburst997/unity-builder@v4
+        env:
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          runAsHostUser: true
+          allowDirtyBuild: true
+          targetPlatform: StandaloneLinux64
+          unityVersion: ${{ env.UNITY_VERSION }}
+          projectPath: ${{ env.UNITY_PATH }}
+          versioning: Custom
+          version: ${{ needs.version.outputs.version }}
+
+      - name: Detect if we can code sign / generate setup
+        id: output
+        run: |
+          echo "discord=${{ secrets.DISCORD_WEBHOOK != '' }}" >> $GITHUB_OUTPUT
+          echo "s3=${{ secrets.S3_SECRET_ACCESS_KEY != '' }}" >> $GITHUB_OUTPUT
+
+      - name: Rename EXE
+        run: |
+          mkdir temp
+          cp -r build/StandaloneLinux64 temp/
+          mv "temp/StandaloneLinux64/StandaloneLinux64" "temp/StandaloneLinux64/${{ vars.APP_NAME }}"
+          mv "temp/StandaloneLinux64/StandaloneLinux64_Data" "temp/StandaloneLinux64/${{ vars.APP_NAME }}_Data"
+
+      - name: Zip folder
+        working-directory: temp/StandaloneLinux64
+        run: |
+          mkdir ../../artifact
+          7z a ../../artifact/${{ vars.APP_NAME }}${{ inputs.zip-suffix }} -r "*" -xr"!*.pdb" -xr"!*_DoNotShip" -xr"!*_ButDontShipItWithYourGame"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact }}
+          path: artifact
+
+      - uses: actions/cache/save@v4
+        if: always() && steps.cache.outputs.cache-hit != 'true'
+        with:
+          path: ${{ env.UNITY_PATH }}/Library
+          key: ${{ inputs.library }}
+
+  post-build:
+    name: Post Build
+    runs-on: ${{ inputs.runner-extra }}
+    needs: [version, build]
+    outputs:
+      zip-name: ${{ steps.vars.outputs.zip-name }}
+      zip-url: ${{ steps.vars.outputs.zip-url }}
+      zip-size: ${{ steps.vars.outputs.zip-size }}
+      links: ${{ steps.vars.outputs.links }}
+    steps:
+      - run: rm -Rf build
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact }}
+          path: build
+
+      - name: Set vars for release
+        run: |
+          echo LANE="Internal" >> $GITHUB_ENV
+          echo S3_LANE="internal" >> $GITHUB_ENV
+      - if: ${{ inputs.release == 'true' }}
+        run: |
+          echo LANE="Release Candidate" >> $GITHUB_ENV
+          echo S3_LANE="rc" >> $GITHUB_ENV
+
+      - name: Upload to S3 but keep the latest 5 only
+        uses: starburst997/s3-upload-action@v1
+        if: ${{ needs.build.outputs.s3 == 'true' }}
+        with:
+          key-id: ${{ secrets.S3_KEY_ID }}
+          secret-access-key: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+          region: ${{ secrets.S3_REGION }}
+          endpoint: ${{ secrets.S3_ENDPOINT }}
+          bucket: ${{ vars.S3_BUCKET }}
+
+          src-dir: 'build'
+          dst-dir: '${{ vars.S3_PATH }}/${{ env.S3_LANE }}/${{ inputs.s3-folder }}'
+          dst-version: '${{ needs.version.outputs.version }}'
+          keep: 5
+          sha: true
+
+      - name: Calculate duration
+        run: |
+          printf -v now '%(%s)T'
+          duration=$((now - ${{ needs.version.outputs.time }}))
+          echo "DURATION=$(echo $duration | awk '{printf "%02d:%02d:%02d", $1/3600, ($1/60)%60, $1%60}')" >> $GITHUB_ENV
+
+      - name: Release notes
+        if: ${{ inputs.notes != '' }}
+        run: echo NOTES="${{ inputs.notes }}" >> $GITHUB_ENV
+      - if: ${{ inputs.notes == '' }}
+        run: echo NOTES="No notes" >> $GITHUB_ENV
+
+      - name: Create some vars
+        run: |
+          echo ZIP_NAME="${{ vars.APP_NAME }}${{ inputs.zip-suffix }}" >> $GITHUB_ENV
+          echo ZIP_URL="${{ vars.S3_URL }}/${{ vars.S3_PATH }}/$S3_LANE/${{ inputs.s3-folder }}/${{ needs.version.outputs.version }}/${{ vars.APP_NAME }}${{ inputs.zip-suffix }}" >> $GITHUB_ENV
+          echo ZIP_SIZE=$(ls -lah build/${{ vars.APP_NAME }}${{ inputs.zip-suffix }} | awk -F " " {'print $5'}) >> $GITHUB_ENV
+
+      - name: Create links
+        if: ${{ needs.build.outputs.s3 == 'true' }}
+        run: echo LINKS="\n- [$ZIP_NAME]($ZIP_URL) ($ZIP_SIZE)" >> $GITHUB_ENV
+
+      - id: vars
+        run: |
+          echo "zip-name=$ZIP_NAME" >> $GITHUB_OUTPUT
+          echo "zip-url=$ZIP_URL" >> $GITHUB_OUTPUT
+          echo "zip-size=$ZIP_SIZE" >> $GITHUB_OUTPUT
+          echo "links=$LINKS" >> $GITHUB_OUTPUT
+
+      - uses: starburst997/get-previous-action@v1
+        id: previous
+        with:
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Discord Notification
+        if: ${{ needs.build.outputs.discord == 'true' }}
+        uses: starburst997/discord-webhook-notify@v2
+        with:
+          severity: info
+          color: ${{ env.DISCORD_COLOR }}
+          text: "**${{ env.LANE }}**: New ${{ inputs.discord }} build available!"
+          description: "${{ env.NOTES }}\n"
+          footer: "Build time: ${{ env.DURATION }}"
+          details: "Download:${{ env.LINKS }}\n\nv${{ needs.version.outputs.version }} - [${{ needs.version.outputs.commit-sha }}](${{ needs.version.outputs.commit-url }}) ([diff](${{ steps.previous.outputs.diff-url }}))"
+          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+          username: ${{ vars.DISCORD_USERNAME }}
+          avatarUrl: ${{ vars.DISCORD_AVATAR }}
+
+      - name: Delete artifact
+        if: ${{ inputs.upload-artifact != 'true' }}
+        uses: starburst997/delete-artifact@v5
+        with:
+          name: ${{ inputs.artifact }}
+
+  failure:
+    name: Failure
+    runs-on: ${{ inputs.runner-extra }}
+    if: failure()
+    needs: [version, build, post-build]
+    steps:
+      - name: Calculate duration
+        run: |
+          printf -v now '%(%s)T'
+          duration=$((now - ${{ needs.version.outputs.time }}))
+          echo "DURATION=$(echo $duration | awk '{printf "%02d:%02d:%02d", $1/3600, ($1/60)%60, $1%60}')" >> $GITHUB_ENV
+      - name: Discord Notification
+        uses: starburst997/discord-webhook-notify@v2
+        if: ${{ env.DISCORD_WEBHOOK != '' }}
+        with:
+          severity: error
+          color: "#FF0000"
+          text: "**Failure**: ${{ inputs.discord }} build failed!"
+          description: "Build failed!\n"
+          footer: "Build time: ${{ env.DURATION }}"
+          details: "Links:\n- [Action Logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\n\nv${{ needs.version.outputs.version }}"
+          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+          username: ${{ vars.DISCORD_USERNAME }}
+          avatarUrl: ${{ vars.DISCORD_AVATAR }}

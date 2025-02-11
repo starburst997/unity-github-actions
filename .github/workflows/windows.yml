@@ -1,42 +1,391 @@
-name: Build Windows (IL2CPP)
+name: Build Windows
+
+env:
+  UNITY_PATH: ${{ vars.APP_UNITY_PATH }}
+  UNITY_VERSION: ${{ vars.APP_UNITY_VERSION }}
+  DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+  DISCORD_COLOR: "#0078d7"
 
 on: 
-  workflow_dispatch:
+  workflow_call:
+    outputs:
+      zip-name: 
+        value: ${{ jobs.post-build.outputs.zip-name }}
+      zip-url: 
+        value: ${{ jobs.post-build.outputs.zip-url }}
+      zip-size: 
+        value: ${{ jobs.post-build.outputs.zip-size }}
+      setup-name: 
+        value: ${{ jobs.post-build.outputs.setup-name }}
+      setup-url: 
+        value: ${{ jobs.post-build.outputs.setup-url }}
+      setup-size: 
+        value: ${{ jobs.post-build.outputs.setup-size }}
+      links: 
+        value: ${{ jobs.post-build.outputs.links }}
     inputs:
       notes:
+        default: ''
         type: string
-        description: Release Notes
       upload-artifact:
-        description: "Get an artifact to download"
-        type: choice
         default: 'false'
-        options:
-          - true
-          - false
+        type: string
+      il2cpp:
+        default: '0'
+        type: string
+      library:
+        default: 'Library-Windows'
+        type: string
+      artifact:
+        default: 'build-windows'
+        type: string
+      s3-folder:
+        default: 'windows'
+        type: string
+      zip-suffix:
+        default: '.windows.zip'
+        type: string
+      setup-suffix:
+        default: '.setup.exe'
+        type: string
+      discord:
+        default: 'Windows'
+        type: string
       release:
-        description: "Release Candidate"
-        type: choice
         default: 'false'
-        options:
-          - true
-          - false
+        type: string
+      timeout:
+        default: 30
+        type: number
+      runner:
+        default: 'ubuntu-latest'
+        type: string
+      runner-extra:
+        default: 'ubuntu-latest'
+        type: string
+      runner-sign:
+        default: 'windows-2022'
+        type: string
 
 jobs:
-  build:
-    uses: starburst997/unity-github-actions/.github/workflows/windows.yml@v1
+  version:
+    uses: starburst997/yearly-version/.github/workflows/version.yml@v1
     secrets: inherit
     with:
-      runner: 'windows-2022'
-      runner-extra: 'ubuntu-latest'
-      runner-sign: 'windows-2022'
-      il2cpp: '1'
-      library: 'Library-Windows'
-      artifact: 'build-windows'
-      s3-folder: 'windows'
-      setup-suffix: '.setup.exe'
-      zip-suffix: '.windows.zip'
-      discord: 'Windows (IL2CPP)'
-      timeout: 45
-      notes: ${{ inputs.notes }}
-      release: ${{ inputs.release }}
-      upload-artifact: ${{ inputs.upload-artifact }}
+      increment: false
+      runner: ${{ inputs.runner-extra }}
+      build-var: WIN_BUILD_NUMBER
+
+  build:
+    name: Build Windows
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeout }}
+    needs: [version]
+    outputs:
+      sign: ${{ steps.output.outputs.sign }}
+      setup: ${{ steps.output.outputs.setup }}
+      discord: ${{ steps.output.outputs.discord }}
+      s3: ${{ steps.output.outputs.s3 }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.GH_PAT }}
+          lfs: true
+
+      - uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: ${{ env.UNITY_PATH }}/Library
+          key: ${{ inputs.library }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+      - run: pip install -r requirements.txt
+
+      - name: Change package name / set il2cpp
+        run: python scripts/workflows/update-project.py ${{ env.UNITY_PATH }} ${{ vars.IOS_BUNDLE_ID }} ${{ vars.MAC_BUNDLE_ID }} ${{ vars.ANDROID_PACKAGE_NAME }} ${{ inputs.il2cpp }} ${{ needs.version.outputs.build }}
+
+      - name: Create directory first to prevent permission error
+        run:  |
+          rm -Rf build
+          mkdir build
+
+      - name: Build project
+        uses: starburst997/unity-builder@v4
+        env:
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          runAsHostUser: true
+          allowDirtyBuild: true
+          targetPlatform: StandaloneWindows64
+          unityVersion: ${{ env.UNITY_VERSION }}
+          projectPath: ${{ env.UNITY_PATH }}
+          versioning: Custom
+          version: ${{ needs.version.outputs.version }}
+
+      - name: Save script for setup
+        run: cp scripts/workflows/setup.iss build/setup.iss
+
+      - name: Save icon from EXE
+        run: icoextract "build/StandaloneWindows64/StandaloneWindows64.exe" build/icon.ico
+
+      - name: Detect if we can code sign / generate setup
+        id: output
+        run: |
+          echo "sign=${{ secrets.AZURE_TENANT_ID != '' }}" >> $GITHUB_OUTPUT
+          echo "setup=${{ vars.WINDOWS_SETUP == 'yes' }}" >> $GITHUB_OUTPUT
+          echo "discord=${{ secrets.DISCORD_WEBHOOK != '' }}" >> $GITHUB_OUTPUT
+          echo "s3=${{ secrets.S3_SECRET_ACCESS_KEY != '' }}" >> $GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact }}
+          path: |
+            build
+            !**/*.pdb
+            !**/*_DoNotShip
+            !**/*_ButDontShipItWithYourGame
+
+      - uses: actions/cache/save@v4
+        if: always() && steps.cache.outputs.cache-hit != 'true'
+        with:
+          path: ${{ env.UNITY_PATH }}/Library
+          key: ${{ inputs.library }}
+
+  sign:
+    name: Code Signing / Setup
+    runs-on: ${{ inputs.runner-sign }}
+    needs: [version, build]
+    steps:
+      #- run: rm -Rf build
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact }}
+          path: build
+
+      - name: Create artifact folder
+        run: mkdir artifact
+
+      - name: Rename EXE
+        working-directory: build/StandaloneWindows64
+        run: |
+          mv "StandaloneWindows64.exe" "${{ vars.APP_NAME }}.exe"
+          mv "StandaloneWindows64_Data" "${{ vars.APP_NAME }}_Data"
+          
+      - name: Rename folder
+        working-directory: build
+        run: mv StandaloneWindows64 windows
+
+      - name: Set metadata on EXE
+        uses: starburst997/rcedit-action@v2
+        with:
+          directory-path: 'build/windows'
+          exe-file-name: '${{ vars.APP_NAME }}.exe'
+          company-name: '${{ vars.APP_COMPANY }}'
+          #file-description: '${{ secrets.APP_DESCRIPTION }}'
+          file-version: '${{ needs.version.outputs.version }}'
+          legal-copyright: 'Copyright ${{ needs.version.outputs.year }} ${{ vars.APP_COMPANY }}'
+          product-name: '${{ vars.APP_NAME }}'
+          product-version: '${{ needs.version.outputs.year }}.${{ needs.version.outputs.release }}'
+
+      - name: Sign files with Trusted Signing
+        uses: azure/trusted-signing-action@v0.5.1
+        if: ${{ needs.build.outputs.sign == 'true' }}
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.AZURE_ENDPOINT }}
+          trusted-signing-account-name: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.AZURE_SIGNING_CERTIFICATE }}
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+          files: |
+            ${{ github.workspace }}\build\windows\${{ vars.APP_NAME }}.exe
+          #  ${{ github.workspace }}\build\windows\GameAssembly.dll
+
+      - name: Generate setup
+        if: ${{ needs.build.outputs.setup == 'true' }}
+        run: |
+          cp build/icon.ico icon.ico
+          echo '#define App "${{ vars.APP_NAME }}"' >> setup.iss
+          echo '#define Folder "build/windows"' >> setup.iss
+          echo '#define Version "${{ needs.version.outputs.year }}.${{ needs.version.outputs.release }}"' >> setup.iss
+          echo '#define Copyright "Copyright ${{ needs.version.outputs.year }} ${{ vars.APP_COMPANY }}"' >> setup.iss
+          echo '#define Company "${{ vars.APP_COMPANY }}"' >> setup.iss
+          type build/setup.iss >> setup.iss
+          iscc.exe setup.iss
+
+      - name: Sign setup with Trusted Signing
+        uses: azure/trusted-signing-action@v0.5.1
+        if: ${{ needs.build.outputs.sign == 'true' && needs.build.outputs.setup == 'true' }}
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.AZURE_ENDPOINT }}
+          trusted-signing-account-name: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.AZURE_SIGNING_CERTIFICATE }}
+          files-folder: ${{ github.workspace }}\setup
+          files-folder-filter: exe,dll
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Move setup to artifact
+        if: ${{ needs.build.outputs.setup == 'true' }}
+        run: mv setup/${{ vars.APP_NAME }}.setup.exe artifact/${{ vars.APP_NAME }}${{ inputs.setup-suffix }}
+
+      - name: Create ZIP
+        working-directory: build/windows
+        run: 7z a ../../artifact/${{ vars.APP_NAME }}${{ inputs.zip-suffix }} "*" -r
+
+      - name: Re-upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact }}
+          path: artifact
+          overwrite: true
+
+  post-build:
+    name: Post Build
+    runs-on: ${{ inputs.runner-extra }}
+    needs: [version, build, sign]
+    outputs:
+      zip-name: ${{ steps.vars.outputs.zip-name }}
+      zip-url: ${{ steps.vars.outputs.zip-url }}
+      zip-size: ${{ steps.vars.outputs.zip-size }}
+      setup-name: ${{ steps.vars.outputs.setup-name }}
+      setup-url: ${{ steps.vars.outputs.setup-url }}
+      setup-size: ${{ steps.vars.outputs.setup-size }}
+      links: ${{ steps.vars.outputs.links }}
+    steps:
+      - run: rm -Rf build
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact }}
+          path: build
+
+      - name: Set vars for release
+        run: |
+          echo LANE="Internal" >> $GITHUB_ENV
+          echo S3_LANE="internal" >> $GITHUB_ENV
+      - if: ${{ inputs.release == 'true' }}
+        run: |
+          echo LANE="Release Candidate" >> $GITHUB_ENV
+          echo S3_LANE="rc" >> $GITHUB_ENV
+
+      - name: Upload to S3 but keep the latest 5 only
+        uses: starburst997/s3-upload-action@v1
+        if: ${{ needs.build.outputs.s3 == 'true' }}
+        with:
+          key-id: ${{ secrets.S3_KEY_ID }}
+          secret-access-key: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+          region: ${{ secrets.S3_REGION }}
+          endpoint: ${{ secrets.S3_ENDPOINT }}
+          bucket: ${{ vars.S3_BUCKET }}
+
+          src-dir: 'build'
+          dst-dir: '${{ vars.S3_PATH }}/${{ env.S3_LANE }}/${{ inputs.s3-folder }}'
+          dst-version: '${{ needs.version.outputs.version }}'
+          keep: 5
+          sha: true
+
+      - name: Calculate duration
+        run: |
+          printf -v now '%(%s)T'
+          duration=$((now - ${{ needs.version.outputs.time }}))
+          echo "DURATION=$(echo $duration | awk '{printf "%02d:%02d:%02d", $1/3600, ($1/60)%60, $1%60}')" >> $GITHUB_ENV
+
+      - name: Release notes
+        if: ${{ inputs.notes != '' }}
+        run: echo NOTES="${{ inputs.notes }}" >> $GITHUB_ENV
+      - if: ${{ inputs.notes == '' }}
+        run: echo NOTES="No notes" >> $GITHUB_ENV
+
+      - name: Create some vars
+        run: |
+          echo ZIP_NAME="${{ vars.APP_NAME }}${{ inputs.zip-suffix }}" >> $GITHUB_ENV
+          echo ZIP_URL="${{ vars.S3_URL }}/${{ vars.S3_PATH }}/$S3_LANE/${{ inputs.s3-folder }}/${{ needs.version.outputs.version }}/${{ vars.APP_NAME }}${{ inputs.zip-suffix }}" >> $GITHUB_ENV
+          echo ZIP_SIZE=$(ls -lah build/${{ vars.APP_NAME }}${{ inputs.zip-suffix }} | awk -F " " {'print $5'}) >> $GITHUB_ENV
+      - if: ${{ needs.build.outputs.setup == 'true' }}
+        run: |
+          echo SETUP_NAME="${{ vars.APP_NAME }}${{ inputs.setup-suffix }}" >> $GITHUB_ENV
+          echo SETUP_URL="${{ vars.S3_URL }}/${{ vars.S3_PATH }}/$S3_LANE/${{ inputs.s3-folder }}/${{ needs.version.outputs.version }}/${{ vars.APP_NAME }}${{ inputs.setup-suffix }}" >> $GITHUB_ENV
+          echo SETUP_SIZE=$(ls -lah build/${{ vars.APP_NAME }}${{ inputs.setup-suffix }} | awk -F " " {'print $5'}) >> $GITHUB_ENV
+
+      - name: Create links
+        if: ${{ needs.build.outputs.s3 == 'true' }}
+        run: echo LINKS="\n- [$ZIP_NAME]($ZIP_URL) ($ZIP_SIZE)" >> $GITHUB_ENV
+      - if: ${{ needs.build.outputs.s3 == 'true' && needs.build.outputs.setup == 'true' }}
+        run: echo LINKS="$LINKS\n- [$SETUP_NAME]($SETUP_URL) ($SETUP_SIZE)" >> $GITHUB_ENV
+
+      - id: vars
+        run: |
+          echo "zip-name=$ZIP_NAME" >> $GITHUB_OUTPUT
+          echo "zip-url=$ZIP_URL" >> $GITHUB_OUTPUT
+          echo "zip-size=$ZIP_SIZE" >> $GITHUB_OUTPUT
+          echo "setup-name=$SETUP_NAME" >> $GITHUB_OUTPUT
+          echo "setup-url=$SETUP_URL" >> $GITHUB_OUTPUT
+          echo "setup-size=$SETUP_SIZE" >> $GITHUB_OUTPUT
+          echo "links=$LINKS" >> $GITHUB_OUTPUT
+
+      - uses: starburst997/get-previous-action@v1
+        id: previous
+        with:
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Discord Notification
+        if: ${{ needs.build.outputs.discord == 'true' }}
+        uses: starburst997/discord-webhook-notify@v2
+        with:
+          severity: info
+          color: ${{ env.DISCORD_COLOR }}
+          text: "**${{ env.LANE }}**: New ${{ inputs.discord }} build available!"
+          description: "${{ env.NOTES }}\n"
+          footer: "Build time: ${{ env.DURATION }}"
+          details: "Download:${{ env.LINKS }}\n\nv${{ needs.version.outputs.version }} - [${{ needs.version.outputs.commit-sha }}](${{ needs.version.outputs.commit-url }}) ([diff](${{ steps.previous.outputs.diff-url }}))"
+          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+          username: ${{ vars.DISCORD_USERNAME }}
+          avatarUrl: ${{ vars.DISCORD_AVATAR }}
+
+      - name: Delete artifact
+        if: ${{ inputs.upload-artifact != 'true' }}
+        uses: starburst997/delete-artifact@v5
+        with:
+          name: ${{ inputs.artifact }}
+
+  failure:
+    name: Failure
+    runs-on: ${{ inputs.runner-extra }}
+    if: failure()
+    needs: [version, build, sign, post-build]
+    steps:
+      - name: Calculate duration
+        run: |
+          printf -v now '%(%s)T'
+          duration=$((now - ${{ needs.version.outputs.time }}))
+          echo "DURATION=$(echo $duration | awk '{printf "%02d:%02d:%02d", $1/3600, ($1/60)%60, $1%60}')" >> $GITHUB_ENV
+      - name: Discord Notification
+        uses: starburst997/discord-webhook-notify@v2
+        if: ${{ env.DISCORD_WEBHOOK != '' }}
+        with:
+          severity: error
+          color: "#FF0000"
+          text: "**Failure**: ${{ inputs.discord }} build failed!"
+          description: "Build failed!\n"
+          footer: "Build time: ${{ env.DURATION }}"
+          details: "Links:\n- [Action Logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\n\nv${{ needs.version.outputs.version }}"
+          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+          username: ${{ vars.DISCORD_USERNAME }}
+          avatarUrl: ${{ vars.DISCORD_AVATAR }}

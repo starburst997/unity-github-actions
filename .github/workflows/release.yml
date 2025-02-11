@@ -1,52 +1,418 @@
 name: Release
 
+# Create a release in github but do not compile anything
+# Instead we'll read the latest (internal) release for each platforms
+# So we assume all platforms have been built manually before and contains a version with the current release number
+# S3 is not optional for release
 on: 
-  workflow_dispatch:
+  workflow_call:
     inputs:
       notes:
+        default: ''
         type: string
-        description: Release Notes
       release:
-        description: "Use release candidates?"
-        type: choice
         default: 'false'
-        options:
-          - true
-          - false
+        type: string
       release_number:
-        description: "Force same release number"
-        type: choice
         default: 'false'
-        options:
-          - true
-          - false
+        type: string
+      runner:
+        default: 'ubuntu-latest'
+        type: string
+      s3-windows-mono:
+        default: 'windows-mono'
+        type: string
+      s3-macos-mono:
+        default: 'macos-mono'
+        type: string
+      s3-linux-mono:
+        default: 'linux-mono'
+        type: string
+      s3-windows:
+        default: 'windows'
+        type: string
+      s3-macos:
+        default: 'macos'
+        type: string
+      s3-linux:
+        default: 'linux'
+        type: string
+      s3-android:
+        default: 'android'
+        type: string
+      s3-ios:
+        default: 'ios'
+        type: string
+      s3-webgl:
+        default: 'webgl'
+        type: string
+      windows-mono:
+        default: 'Windows (mono)'
+        type: string
+      macos-mono:
+        default: 'macOSs (mono)'
+        type: string
+      linux-mono:
+        default: 'Linux (mono)'
+        type: string
+      windows:
+        default: 'Windows'
+        type: string
+      macos:
+        default: 'macOS'
+        type: string
+      linux:
+        default: 'Linux'
+        type: string
+      android:
+        default: 'Android'
+        type: string
+      ios:
+        default: 'iOS'
+        type: string
+      webgl:
+        default: 'WebGL'
+        type: string
 
 jobs:
-  build:
-    uses: starburst997/unity-github-actions/.github/workflows/release.yml@v1
+  version: # Get current version
+    uses: starburst997/yearly-version/.github/workflows/version.yml@v1
     secrets: inherit
     with:
-      runner: 'self-hosted' # 'ubuntu-latest'
-      notes: ${{ inputs.notes }}
-      release: ${{ inputs.release }}
-      release_number: ${{ inputs.release_number }}
+      runner: ${{ inputs.runner }}
+  
+  version_increment: # Increment only if release is successful
+    uses: starburst997/yearly-version/.github/workflows/version.yml@v1
+    needs: [release]
+    secrets: inherit
+    with:
+      increment: true
+      runner: ${{ inputs.runner }}
 
-      s3-windows-mono: 'windows-mono'
-      s3-macos-mono: 'macos-mono'
-      s3-linux-mono: 'linux-mono'
-      s3-windows: 'windows'
-      s3-macos: 'macos'
-      s3-linux: 'linux'
-      s3-android: 'android'
-      s3-ios: 'ios'
-      s3-webgl: 'webgl'
+  release:
+    name: Release (no builds)
+    runs-on: ${{ inputs.runner }}
+    needs: [version]
+    steps:
+      - uses: actions/checkout@v4
       
-      windows-mono: 'Windows (mono)'
-      macos-mono: 'macOSs (mono)'
-      linux-mono: 'Linux (mono)'
-      windows: 'Windows'
-      macos: 'macOS'
-      linux: 'Linux'
-      android: 'Android'
-      ios: 'iOS'
-      webgl: 'WebGL'
+      - if: ${{ inputs.release_number == 'true' }}
+        run: echo "RELEASE_NUMBER=${{ needs.version.outputs.release }}" >> $GITHUB_ENV
+
+      - name: Set vars for release
+        run: |
+          echo LANE="Internal" >> $GITHUB_ENV
+          echo S3_LANE="internal" >> $GITHUB_ENV
+      - if: ${{ inputs.release == 'true' }}
+        run: |
+          echo LANE="Release Candidate" >> $GITHUB_ENV
+          echo S3_LANE="rc" >> $GITHUB_ENV
+
+      - uses: starburst997/get-previous-action@v1
+        id: previous
+        with:
+          token: ${{ secrets.GH_PAT }}
+
+      - run: |
+          mkdir build
+          mkdir build_html
+
+      # TODO: Cleanup, is there template or function? Should I just create an action for that only?
+
+      - name: Windows (mono)
+        id: windows-mono
+        uses: starburst997/s3-get-latest@v1
+        with:
+          key-id: ${{ secrets.S3_KEY_ID }}
+          secret-access-key: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+          region: ${{ secrets.S3_REGION }}
+          endpoint: ${{ secrets.S3_ENDPOINT }}
+          bucket: ${{ vars.S3_BUCKET }}
+          dst-dir: 'build/build-windows-mono'
+          src-dir: '${{ vars.S3_PATH }}/${{ env.S3_LANE }}/${{ inputs.s3-windows-mono }}'
+          release: '${{ env.RELEASE_NUMBER }}'
+      - run: |
+          if [ -d build/build-windows-mono ]; then
+            if [ ! -f build/build-windows-mono/SHA ]; then echo "0000000" >> build/build-windows-mono/SHA; fi
+            echo -n "${{ inputs.windows-mono }} v${{ steps.windows-mono.outputs.version }} - [$(cat build/build-windows-mono/SHA 2>/dev/null | cut -c1-8)](${{ github.server_url }}/${{ github.repository }}/commit/$(cat build/build-windows-mono/SHA 2>/dev/null)) ([diff](${{ github.server_url }}/${{ github.repository }}/compare/${{ steps.previous.outputs.sha }}...$(cat build/build-windows-mono/SHA 2>/dev/null))):\n" >> links
+            rm -f build/build-windows-mono/SHA
+            for file in build/build-windows-mono/*; do
+              echo -n " - [${file##*/}](${{ vars.S3_URL }}/${{ vars.S3_PATH }}/release/${{ needs.version.outputs.year }}.${{ needs.version.outputs.release }}/${file##*/}) ($(ls -lah $file | awk -F " " {'print $5'}))\n" >> links
+            done
+            echo -n "\n" >> links
+          fi
+
+      - name: Windows
+        id: windows
+        uses: starburst997/s3-get-latest@v1
+        with:
+          key-id: ${{ secrets.S3_KEY_ID }}
+          secret-access-key: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+          region: ${{ secrets.S3_REGION }}
+          endpoint: ${{ secrets.S3_ENDPOINT }}
+          bucket: ${{ vars.S3_BUCKET }}
+          dst-dir: 'build/build-windows'
+          src-dir: '${{ vars.S3_PATH }}/${{ env.S3_LANE }}/${{ inputs.s3-windows }}'
+          release: '${{ env.RELEASE_NUMBER }}'
+      - run: |
+          if [ -d build/build-windows ]; then
+            if [ ! -f build/build-windows/SHA ]; then echo "0000000" >> build/build-windows/SHA; fi
+            echo -n "${{ inputs.windows-mono }} v${{ steps.windows.outputs.version }} - [$(cat build/build-windows/SHA 2>/dev/null | cut -c1-8)](${{ github.server_url }}/${{ github.repository }}/commit/$(cat build/build-windows/SHA 2>/dev/null)) ([diff](${{ github.server_url }}/${{ github.repository }}/compare/${{ steps.previous.outputs.sha }}...$(cat build/build-windows/SHA 2>/dev/null))):\n" >> links
+            rm -f build/build-windows/SHA
+            for file in build/build-windows/*; do
+              echo -n " - [${file##*/}](${{ vars.S3_URL }}/${{ vars.S3_PATH }}/release/${{ needs.version.outputs.year }}.${{ needs.version.outputs.release }}/${file##*/}) ($(ls -lah $file | awk -F " " {'print $5'}))\n" >> links
+            done
+            echo -n "\n" >> links
+          fi
+
+      - name: macOS (mono)
+        id: macos-mono
+        uses: starburst997/s3-get-latest@v1
+        with:
+          key-id: ${{ secrets.S3_KEY_ID }}
+          secret-access-key: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+          region: ${{ secrets.S3_REGION }}
+          endpoint: ${{ secrets.S3_ENDPOINT }}
+          bucket: ${{ vars.S3_BUCKET }}
+          dst-dir: 'build/build-macos-mono'
+          src-dir: '${{ vars.S3_PATH }}/${{ env.S3_LANE }}/${{ inputs.s3-macos-mono }}'
+          release: '${{ env.RELEASE_NUMBER }}'
+      - run: |
+          if [ -d build/build-macos-mono ]; then
+            if [ ! -f build/build-macos-mono/SHA ]; then echo "0000000" >> build/build-macos-mono/SHA; fi
+            echo -n "${{ inputs.macos-mono }} v${{ steps.macos-mono.outputs.version }} - [$(cat build/build-macos-mono/SHA 2>/dev/null | cut -c1-8)](${{ github.server_url }}/${{ github.repository }}/commit/$(cat build/build-macos-mono/SHA 2>/dev/null)) ([diff](${{ github.server_url }}/${{ github.repository }}/compare/${{ steps.previous.outputs.sha }}...$(cat build/build-macos-mono/SHA 2>/dev/null))):\n" >> links
+            rm -f build/build-macos-mono/SHA
+            for file in build/build-macos-mono/*; do
+              echo -n " - [${file##*/}](${{ vars.S3_URL }}/${{ vars.S3_PATH }}/release/${{ needs.version.outputs.year }}.${{ needs.version.outputs.release }}/${file##*/}) ($(ls -lah $file | awk -F " " {'print $5'}))\n" >> links
+            done
+            echo -n " - [Get on Testflight](${{ vars.TESTFLIGHT_INVITE }})\n" >> links
+            echo -n "\n" >> links
+          fi
+
+      - name: macOS
+        id: macos
+        uses: starburst997/s3-get-latest@v1
+        with:
+          key-id: ${{ secrets.S3_KEY_ID }}
+          secret-access-key: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+          region: ${{ secrets.S3_REGION }}
+          endpoint: ${{ secrets.S3_ENDPOINT }}
+          bucket: ${{ vars.S3_BUCKET }}
+          dst-dir: 'build/build-macos'
+          src-dir: '${{ vars.S3_PATH }}/${{ env.S3_LANE }}/${{ inputs.s3-macos }}'
+          release: '${{ env.RELEASE_NUMBER }}'
+      - run: |
+          if [ -d build/build-macos ]; then
+            if [ ! -f build/build-macos/SHA ]; then echo "0000000" >> build/build-macos/SHA; fi
+            echo -n "${{ inputs.macos }} v${{ steps.macos.outputs.version }} - [$(cat build/build-macos/SHA 2>/dev/null | cut -c1-8)](${{ github.server_url }}/${{ github.repository }}/commit/$(cat build/build-macos/SHA 2>/dev/null)) ([diff](${{ github.server_url }}/${{ github.repository }}/compare/${{ steps.previous.outputs.sha }}...$(cat build/build-macos/SHA 2>/dev/null))):\n" >> links
+            rm -f build/build-macos/SHA
+            for file in build/build-macos/*; do
+              echo -n " - [${file##*/}](${{ vars.S3_URL }}/${{ vars.S3_PATH }}/release/${{ needs.version.outputs.year }}.${{ needs.version.outputs.release }}/${file##*/}) ($(ls -lah $file | awk -F " " {'print $5'}))\n" >> links
+            done
+            echo -n " - [Get on Testflight](${{ vars.TESTFLIGHT_INVITE }})\n" >> links
+            echo -n "\n" >> links
+          fi
+
+      - name: Linux (mono)
+        id: linux-mono
+        uses: starburst997/s3-get-latest@v1
+        with:
+          key-id: ${{ secrets.S3_KEY_ID }}
+          secret-access-key: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+          region: ${{ secrets.S3_REGION }}
+          endpoint: ${{ secrets.S3_ENDPOINT }}
+          bucket: ${{ vars.S3_BUCKET }}
+          dst-dir: 'build/build-linux-mono'
+          src-dir: '${{ vars.S3_PATH }}/${{ env.S3_LANE }}/${{ inputs.s3-linux-mono }}'
+          release: '${{ env.RELEASE_NUMBER }}'
+      - run: |
+          if [ -d build/build-linux-mono ]; then
+            if [ ! -f build/build-linux-mono/SHA ]; then echo "0000000" >> build/build-linux-mono/SHA; fi
+            echo -n "${{ inputs.linux-mono }} v${{ steps.linux-mono.outputs.version }} - [$(cat build/build-linux-mono/SHA 2>/dev/null | cut -c1-8)](${{ github.server_url }}/${{ github.repository }}/commit/$(cat build/build-linux-mono/SHA 2>/dev/null)) ([diff](${{ github.server_url }}/${{ github.repository }}/compare/${{ steps.previous.outputs.sha }}...$(cat build/build-linux-mono/SHA 2>/dev/null))):\n" >> links
+            rm -f build/build-linux-mono/SHA
+            for file in build/build-linux-mono/*; do
+              echo -n " - [${file##*/}](${{ vars.S3_URL }}/${{ vars.S3_PATH }}/release/${{ needs.version.outputs.year }}.${{ needs.version.outputs.release }}/${file##*/}) ($(ls -lah $file | awk -F " " {'print $5'}))\n" >> links
+            done
+            echo -n "\n" >> links
+          fi
+
+      - name: Linux
+        id: linux
+        uses: starburst997/s3-get-latest@v1
+        with:
+          key-id: ${{ secrets.S3_KEY_ID }}
+          secret-access-key: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+          region: ${{ secrets.S3_REGION }}
+          endpoint: ${{ secrets.S3_ENDPOINT }}
+          bucket: ${{ vars.S3_BUCKET }}
+          dst-dir: 'build/build-linux'
+          src-dir: '${{ vars.S3_PATH }}/${{ env.S3_LANE }}/${{ inputs.s3-linux }}'
+          release: '${{ env.RELEASE_NUMBER }}'
+      - run: |
+          if [ -d build/build-linux ]; then
+            if [ ! -f build/build-linux/SHA ]; then echo "0000000" >> build/build-linux/SHA; fi
+            echo -n "${{ inputs.linux}} v${{ steps.linux.outputs.version }} - [$(cat build/build-linux/SHA 2>/dev/null | cut -c1-8)](${{ github.server_url }}/${{ github.repository }}/commit/$(cat build/build-linux/SHA 2>/dev/null)) ([diff](${{ github.server_url }}/${{ github.repository }}/compare/${{ steps.previous.outputs.sha }}...$(cat build/build-linux/SHA 2>/dev/null))):\n" >> links
+            rm -f build/build-linux/SHA
+            for file in build/build-linux/*; do
+              echo -n " - [${file##*/}](${{ vars.S3_URL }}/${{ vars.S3_PATH }}/release/${{ needs.version.outputs.year }}.${{ needs.version.outputs.release }}/${file##*/}) ($(ls -lah $file | awk -F " " {'print $5'}))\n" >> links
+            done
+            echo -n "\n" >> links
+          fi
+
+      - name: Android
+        id: android
+        uses: starburst997/s3-get-latest@v1
+        with:
+          key-id: ${{ secrets.S3_KEY_ID }}
+          secret-access-key: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+          region: ${{ secrets.S3_REGION }}
+          endpoint: ${{ secrets.S3_ENDPOINT }}
+          bucket: ${{ vars.S3_BUCKET }}
+          dst-dir: 'build/build-android'
+          src-dir: '${{ vars.S3_PATH }}/${{ env.S3_LANE }}/${{ inputs.s3-android }}'
+          release: '${{ env.RELEASE_NUMBER }}'
+      - run: |
+          if [ -d build/build-android ]; then
+            if [ ! -f build/build-android/SHA ]; then echo "0000000" >> build/build-android/SHA; fi
+            echo -n "${{ inputs.android }} v${{ steps.android.outputs.version }} - [$(cat build/build-android/SHA 2>/dev/null | cut -c1-8)](${{ github.server_url }}/${{ github.repository }}/commit/$(cat build/build-android/SHA 2>/dev/null)) ([diff](${{ github.server_url }}/${{ github.repository }}/compare/${{ steps.previous.outputs.sha }}...$(cat build/build-android/SHA 2>/dev/null))):\n" >> links
+            rm -f build/build-android/SHA
+            for file in build/build-android/*; do
+              echo -n " - [${file##*/}](${{ vars.S3_URL }}/${{ vars.S3_PATH }}/release/${{ needs.version.outputs.year }}.${{ needs.version.outputs.release }}/${file##*/}) ($(ls -lah $file | awk -F " " {'print $5'}))\n" >> links
+            done
+            echo -n " - [Get on Google Play](${{ vars.GOOGLE_PLAY_INVITE }})\n" >> links
+            echo -n "\n" >> links
+          fi
+
+      - name: iOS
+        id: ios
+        uses: starburst997/s3-get-latest@v1
+        with:
+          key-id: ${{ secrets.S3_KEY_ID }}
+          secret-access-key: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+          region: ${{ secrets.S3_REGION }}
+          endpoint: ${{ secrets.S3_ENDPOINT }}
+          bucket: ${{ vars.S3_BUCKET }}
+          dst-dir: 'build/build-ios'
+          src-dir: '${{ vars.S3_PATH }}/${{ env.S3_LANE }}/${{ inputs.s3-ios }}'
+          release: '${{ env.RELEASE_NUMBER }}'
+      - run: |
+          if [ -d build/build-ios ]; then
+            if [ ! -f build/build-ios/SHA ]; then echo "0000000" >> build/build-ios/SHA; fi
+            echo -n "${{ inputs.ios }} v${{ steps.ios.outputs.version }} - [$(cat build/build-ios/SHA 2>/dev/null | cut -c1-8)](${{ github.server_url }}/${{ github.repository }}/commit/$(cat build/build-ios/SHA 2>/dev/null)) ([diff](${{ github.server_url }}/${{ github.repository }}/compare/${{ steps.previous.outputs.sha }}...$(cat build/build-ios/SHA 2>/dev/null))):\n" >> links
+            rm -f build/build-ios/SHA
+            for file in build/build-ios/*; do
+              echo -n " - [${file##*/}](${{ vars.S3_URL }}/${{ vars.S3_PATH }}/release/${{ needs.version.outputs.year }}.${{ needs.version.outputs.release }}/${file##*/}) ($(ls -lah $file | awk -F " " {'print $5'}))\n" >> links
+            done
+            echo -n " - [Get on Testflight](${{ vars.TESTFLIGHT_INVITE }})\n" >> links
+            echo -n "\n" >> links
+          fi
+      
+      - name: WebGL
+        id: webgl
+        uses: starburst997/s3-get-latest@v1
+        with:
+          key-id: ${{ secrets.S3_KEY_ID }}
+          secret-access-key: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+          region: ${{ secrets.S3_REGION }}
+          endpoint: ${{ secrets.S3_ENDPOINT }}
+          bucket: ${{ vars.S3_BUCKET }}
+          dst-dir: 'build/build-webgl'
+          src-dir: '${{ vars.S3_PATH }}/${{ env.S3_LANE }}/${{ inputs.s3-webgl }}'
+          release: '${{ env.RELEASE_NUMBER }}'
+      - run: |
+          if [ -d build/build-webgl ]; then
+            if [ ! -f build/build-webgl/SHA ]; then echo "0000000" >> build/build-webgl/SHA; fi
+            echo -n "${{ inputs.webgl }} v${{ steps.webgl.outputs.version }} - [$(cat build/build-webgl/SHA 2>/dev/null | cut -c1-8)](${{ github.server_url }}/${{ github.repository }}/commit/$(cat build/build-webgl/SHA 2>/dev/null)) ([diff](${{ github.server_url }}/${{ github.repository }}/compare/${{ steps.previous.outputs.sha }}...$(cat build/build-webgl/SHA 2>/dev/null))):\n" >> links
+            rm -f build/build-webgl/SHA
+            mv build/build-webgl/html build_html 2>/dev/null
+            for file in build/build-webgl/*; do
+              echo -n " - [${file##*/}](${{ vars.S3_URL }}/${{ vars.S3_PATH }}/release/${{ needs.version.outputs.year }}.${{ needs.version.outputs.release }}/${file##*/}) ($(ls -lah $file | awk -F " " {'print $5'}))\n" >> links
+            done
+            echo -n " - [Play Now!](${{ vars.S3_URL }}/${{ vars.S3_PATH }}/release/${{ needs.version.outputs.year }}.${{ needs.version.outputs.release }}/html/index.html)\n" >> links
+            echo -n "\n" >> links
+          fi
+
+      - name: Flatten folders
+        run: |
+          mkdir artifacts
+          find build -mindepth 2 -type f -exec mv -t artifacts -i '{}' +
+          mv build_html/html artifacts/html 2>/dev/null
+
+      - name: Upload to S3
+        uses: starburst997/s3-upload-action@v1
+        with:
+          key-id: ${{ secrets.S3_KEY_ID }}
+          secret-access-key: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+          region: ${{ secrets.S3_REGION }}
+          endpoint: ${{ secrets.S3_ENDPOINT }}
+          bucket: ${{ vars.S3_BUCKET }}
+
+          src-dir: 'artifacts'
+          dst-dir: '${{ vars.S3_PATH }}/release'
+          dst-version: '${{ needs.version.outputs.year }}.${{ needs.version.outputs.release }}'
+          keep: 15
+          sha: true
+
+      - name: Generate Changelog
+        if: ${{ inputs.notes != '' }}
+        run: echo "${{ inputs.notes }}" > RELEASE.txt
+      - name: Generate Changelog (empty)
+        if: ${{ inputs.notes == '' }}
+        run: echo "No notes" > RELEASE.txt
+      
+      - name: Add links to changelog
+        run: |
+          echo "" >> RELEASE.txt
+          echo "" >> RELEASE.txt
+          echo "<details>" >> RELEASE.txt
+          echo "<summary>Links</summary>" >> RELEASE.txt
+          echo "" >> RELEASE.txt
+          echo "" >> RELEASE.txt
+          lines=$(cat links); echo "${lines//'\n'/$'\n'}" >> RELEASE.txt
+          echo "</details>" >> RELEASE.txt
+
+      - run: rm -Rf artifacts/html
+
+      - name: Release
+        uses: starburst997/release-action@v1
+        with:
+          bodyFile: RELEASE.txt
+          token: ${{ secrets.GH_PAT }}
+          tag: v${{ needs.version.outputs.year }}.${{ needs.version.outputs.release }}
+          replacesArtifacts: true
+          allowUpdates: true
+          artifacts: artifacts/*
+      
+      - name: Calculate duration
+        run: |
+          printf -v now '%(%s)T'
+          duration=$((now - ${{ needs.version.outputs.time }}))
+          echo "DURATION=$(echo $duration | awk '{printf "%02d:%02d:%02d", $1/3600, ($1/60)%60, $1%60}')" >> $GITHUB_ENV
+      
+      - id: vars
+        run: echo "discord=${{ secrets.DISCORD_WEBHOOK != '' }}" >> $GITHUB_OUTPUT
+      
+      - name: Release notes
+        if: ${{ inputs.notes != '' }}
+        run: echo NOTES="${{ inputs.notes }}" >> $GITHUB_ENV
+      - if: ${{ inputs.notes == '' }}
+        run: echo NOTES="No notes" >> $GITHUB_ENV
+      
+      - id: output
+        run: |
+          links="$(cat links)"
+          echo "links=$links" >> $GITHUB_OUTPUT
+
+      - name: Discord Notification
+        if: ${{ steps.vars.outputs.discord == 'true' }}
+        uses: starburst997/discord-webhook-notify@v2
+        with:
+          severity: info
+          color: '#00FF00'
+          text: "**Release**: New version was released!"
+          description: "${{ env.NOTES }}\n"
+          footer: "Build time: ${{ env.DURATION }}"
+          details: "${{ steps.output.outputs.links }}v${{ needs.version.outputs.version }} - [${{ needs.version.outputs.commit-sha }}](${{ needs.version.outputs.commit-url }}) ([diff](${{ steps.previous.outputs.diff-url }}))"
+          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+          username: ${{ vars.DISCORD_USERNAME }}
+          avatarUrl: ${{ vars.DISCORD_AVATAR }}

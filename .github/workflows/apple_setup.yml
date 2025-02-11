@@ -1,14 +1,73 @@
 name: Apple Setup
 
-on: workflow_dispatch
+on:
+  workflow_call:
+    inputs:
+      use_session:
+        required: false
+        type: boolean
+      generate_macos:
+        required: false
+        type: boolean
+      generate_ios:
+        required: false
+        type: boolean
+      generate_appstore:
+        required: false
+        type: boolean
+      generate_developer_id:
+        required: false
+        type: boolean
+      generate_pkg:
+        required: false
+        type: boolean
+      macos_vm:
+        description: 'The macos machine to runs-on'
+        default: 'macos-13'
+        required: false
+        type: string
 
 jobs:
   setup:
-    uses: starburst997/unity-github-actions/.github/workflows/apple_setup.yml@v1
-    secrets: inherit
-    with:
-      generate_macos: true
-      generate_ios: true
-      generate_appstore: true
-      generate_developer_id: true
-      use_session: true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: starburst997/setup-ruby@jd
+        with:
+          ruby-version: 3.2
+          bundler-cache: true
+          add-platform: true
+
+      - name: Fastlane
+        id: fastlane
+        shell: bash
+        run: |
+          bundle exec fastlane ios init_ci
+
+          eval "$(ssh-agent -s)"
+          ssh-add - <<< "$(cat MATCH_DEPLOY_KEY)"
+
+          [[ $GENERATE_IOS == true ]] && bundle exec fastlane ios sync_certificates
+          [[ $GENERATE_MACOS == true ]] && bundle exec fastlane mac sync_certificates
+          echo "Finshed!"
+        env:
+          FASTLANE_USER: ${{ secrets.FASTLANE_USER }}
+          FASTLANE_PASSWORD: ${{ secrets.FASTLANE_PASSWORD }}
+          FASTLANE_SESSION: ${{ secrets.FASTLANE_SESSION }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_P8: ${{ secrets.APPSTORE_P8 }}
+
+          MAC_BUNDLE_ID: ${{ vars.MAC_BUNDLE_ID }}
+          IOS_BUNDLE_ID: ${{ vars.IOS_BUNDLE_ID }}
+
+          GH_PAT: ${{ secrets.GH_PAT }}
+          GITHUB_REPOSITORY: ${{ env.GITHUB_REPOSITORY }}
+          MATCH_REPOSITORY: ${{ secrets.MATCH_REPOSITORY }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          GENERATE_DEVELOPER_ID: ${{ inputs.generate_developer_id }}
+          GENERATE_APPSTORE: ${{ inputs.generate_appstore }}
+          GENERATE_IOS: ${{ inputs.generate_ios }}
+          GENERATE_MACOS: ${{ inputs.generate_macos }}
+          GENERATE_PKG: ${{ inputs.generate_pkg }}
+          USE_SESSION: ${{ inputs.use_session }}

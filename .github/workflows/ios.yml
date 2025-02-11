@@ -1,40 +1,329 @@
 name: Build iOS
 
+env:
+  UNITY_PATH: ${{ vars.APP_UNITY_PATH }}
+  UNITY_VERSION: ${{ vars.APP_UNITY_VERSION }}
+  DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+  DISCORD_COLOR: "#f5821f"
+
 on: 
-  workflow_dispatch:
+  workflow_call:
+    outputs:
+      ipa-name: 
+        value: ${{ jobs.post-build.outputs.ipa-name }}
+      ipa-url: 
+        value: ${{ jobs.post-build.outputs.ipa-url }}
+      ipa-size: 
+        value: ${{ jobs.post-build.outputs.ipa-size }}
+      links: 
+        value: ${{ jobs.post-build.outputs.links }}
     inputs:
       notes:
+        default: ''
         type: string
-        description: Release Notes
       upload-artifact:
-        description: "Get an artifact to download"
-        type: choice
         default: 'false'
-        options:
-          - true
-          - false
+        type: string
+      il2cpp:
+        default: '1'
+        type: string
+      library:
+        default: 'Library-iOS'
+        type: string
+      artifact:
+        default: 'build-ios'
+        type: string
+      s3-folder:
+        default: 'ios'
+        type: string
+      discord:
+        default: 'iOS'
+        type: string
       release:
-        description: "Release Candidate"
-        type: choice
         default: 'false'
-        options:
-          - true
-          - false
+        type: string
+      timeout:
+        default: 45
+        type: number
+      runner:
+        default: 'ubuntu-latest'
+        type: string
+      runner-extra:
+        default: 'ubuntu-latest'
+        type: string
+      runner-sign:
+        default: 'macos-13'
+        type: string
 
 jobs:
-  build:
-    uses: starburst997/unity-github-actions/.github/workflows/ios.yml@v1
+  version:
+    uses: starburst997/yearly-version/.github/workflows/version.yml@v1
     secrets: inherit
     with:
-      runner: 'self-hosted' # 'ubuntu-latest'
-      runner-extra: 'self-hosted' # 'ubuntu-latest'
-      runner-sign: 'macos-13'
-      il2cpp: '1'
-      library: 'Library-iOS'
-      artifact: 'build-ios'
-      s3-folder: 'ios'
-      discord: 'iOS'
-      timeout: 45
-      notes: ${{ inputs.notes }}
-      release: ${{ inputs.release }}
-      upload-artifact: ${{ inputs.upload-artifact }}
+      increment: false
+      runner: ${{ inputs.runner-extra }}
+      build-var: IOS_BUILD_NUMBER
+
+  build:
+    name: Build iOS
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeout }}
+    needs: [version]
+    outputs:
+      discord: ${{ steps.output.outputs.discord }}
+      s3: ${{ steps.output.outputs.s3 }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.GH_PAT }}
+          lfs: true
+
+      - uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: ${{ env.UNITY_PATH }}/Library
+          key: ${{ inputs.library }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+      - run: pip install -r requirements.txt
+
+      - name: Change package name / set IL2CPP
+        run: python scripts/workflows/update-project.py ${{ env.UNITY_PATH }} ${{ vars.IOS_BUNDLE_ID }} ${{ vars.MAC_BUNDLE_ID }} ${{ vars.ANDROID_PACKAGE_NAME }} 1 ${{ needs.version.outputs.build }}
+
+      - name: Create directory first to prevent permission error
+        run:  |
+          rm -Rf build
+          mkdir build
+
+      - name: Build project
+        uses: starburst997/unity-builder@v4
+        env:
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          runAsHostUser: true
+          allowDirtyBuild: true
+          targetPlatform: iOS
+          unityVersion: ${{ env.UNITY_VERSION }}
+          projectPath: ${{ env.UNITY_PATH }}
+          versioning: Custom
+          version: ${{ needs.version.outputs.version }}
+
+      - name: Detect if we can code sign / generate setup
+        id: output
+        run: |
+          echo "discord=${{ secrets.DISCORD_WEBHOOK != '' }}" >> $GITHUB_OUTPUT
+          echo "s3=${{ secrets.S3_SECRET_ACCESS_KEY != '' }}" >> $GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-ios
+          path: |
+            build/iOS/iOS
+            !**/*.pdb
+            !**/*_DoNotShip
+            !**/*_ButDontShipItWithYourGame
+
+      - uses: actions/cache/save@v4
+        if: always() && steps.cache.outputs.cache-hit != 'true'
+        with:
+          path: ${{ env.UNITY_PATH }}/Library
+          key: ${{ inputs.library }}
+
+  sign:
+    name: Code Signing
+    runs-on: ${{ inputs.runner-sign }}
+    needs: [version, build]
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      
+      - uses: starburst997/setup-ruby@jd
+        with:
+          ruby-version: 3.2
+          bundler-cache: true
+          add-platform: true
+      
+      - run: rm -Rf project
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact }}
+          path: project
+      
+      - name: Run fastlane
+        env:
+          APPLE_CONNECT_EMAIL: ${{ secrets.APPLE_CONNECT_EMAIL }}
+          APPLE_DEVELOPER_EMAIL: ${{ secrets.APPLE_DEVELOPER_EMAIL }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+          MATCH_REPOSITORY: ${{ secrets.MATCH_REPOSITORY }}
+          MATCH_DEPLOY_KEY: ${{ secrets.MATCH_DEPLOY_KEY }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_P8: ${{ secrets.APPSTORE_P8 }}
+
+          IOS_BUILD_PATH: ${{ format('{0}/{1}', github.workspace, 'project') }}
+          IOS_BUNDLE_ID: ${{ vars.IOS_BUNDLE_ID }}
+          
+          ITMSTRANSPORTER_FORCE_ITMS_PACKAGE_UPLOAD: false
+
+          PROJECT_TARGET: "Unity-iPhone"
+          XCODEPROJ_PATH: "Unity-iPhone.xcodeproj"
+          PLIST_PATH: "Info.plist"
+          ENTITLEMENTS: "false"
+          VERSION: "false" # "${{ needs.version.outputs.year }}.${{ needs.version.outputs.release }}"
+          BUILD_NUMBER: ${{ needs.version.outputs.build }}
+          BUILD_PATH: build
+        shell: bash
+        run: |
+          eval "$(ssh-agent -s)"
+          ssh-add - <<< "${MATCH_DEPLOY_KEY}"
+          bundle install
+          bundle exec fastlane ios beta
+          echo "Finshed!"
+
+      - name: Cleanup
+        working-directory: build
+        run: |
+          rm appstore.app.dSYM.zip
+          mv appstore.ipa ${{ vars.APP_NAME }}.ipa
+
+      - name: Re-upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact }}
+          path: build
+          overwrite: true
+
+  post-build:
+    name: Post Build
+    runs-on: ${{ inputs.runner-extra }}
+    needs: [version, build, sign]
+    outputs:
+      ipa-name: ${{ steps.vars.outputs.ipa-name }}
+      ipa-url: ${{ steps.vars.outputs.ipa-url }}
+      ipa-size: ${{ steps.vars.outputs.ipa-size }}
+      links: ${{ steps.vars.outputs.links }}
+    steps:
+      - run: rm -Rf build
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact }}
+          path: build
+
+      - name: Set vars for release
+        run: |
+          echo LANE="Internal" >> $GITHUB_ENV
+          echo S3_LANE="internal" >> $GITHUB_ENV
+      - if: ${{ inputs.release == 'true' }}
+        run: |
+          echo LANE="Release Candidate" >> $GITHUB_ENV
+          echo S3_LANE="rc" >> $GITHUB_ENV
+
+      - name: Upload to S3 but keep the latest 5 only
+        uses: starburst997/s3-upload-action@v1
+        if: ${{ needs.build.outputs.s3 == 'true' }}
+        with:
+          key-id: ${{ secrets.S3_KEY_ID }}
+          secret-access-key: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+          region: ${{ secrets.S3_REGION }}
+          endpoint: ${{ secrets.S3_ENDPOINT }}
+          bucket: ${{ vars.S3_BUCKET }}
+
+          src-dir: 'build'
+          dst-dir: '${{ vars.S3_PATH }}/${{ env.S3_LANE }}/${{ inputs.s3-folder }}'
+          dst-version: '${{ needs.version.outputs.version }}'
+          keep: 5
+          sha: true
+
+      - name: Calculate duration
+        run: |
+          printf -v now '%(%s)T'
+          duration=$((now - ${{ needs.version.outputs.time }}))
+          echo "DURATION=$(echo $duration | awk '{printf "%02d:%02d:%02d", $1/3600, ($1/60)%60, $1%60}')" >> $GITHUB_ENV
+
+      - name: Release notes
+        if: ${{ inputs.notes != '' }}
+        run: echo NOTES="${{ inputs.notes }}" >> $GITHUB_ENV
+      - if: ${{ inputs.notes == '' }}
+        run: echo NOTES="No notes" >> $GITHUB_ENV
+
+      - name: Create some vars
+        run: |
+          echo IPA_NAME="${{ vars.APP_NAME }}.ipa" >> $GITHUB_ENV
+          echo IPA_URL="${{ vars.S3_URL }}/${{ vars.S3_PATH }}/$S3_LANE/${{ inputs.s3-folder }}/${{ needs.version.outputs.version }}/${{ vars.APP_NAME }}.ipa" >> $GITHUB_ENV
+          echo IPA_SIZE=$(ls -lah build/${{ vars.APP_NAME }}.ipa | awk -F " " {'print $5'}) >> $GITHUB_ENV
+
+      - name: Create links
+        if: ${{ needs.build.outputs.s3 == 'true' }}
+        run: echo LINKS="\n- [$IPA_NAME]($IPA_URL) ($IPA_SIZE)" >> $GITHUB_ENV
+      - if: ${{ vars.TESTFLIGHT_INVITE != '' }}
+        run: echo LINKS="$LINKS\n- [Get on Testflight](${{ vars.TESTFLIGHT_INVITE }})" >> $GITHUB_ENV
+
+      - id: vars
+        run: |
+          echo "ipa-name=$IPA_NAME" >> $GITHUB_OUTPUT
+          echo "ipa-url=$IPA_URL" >> $GITHUB_OUTPUT
+          echo "ipa-size=$IPA_SIZE" >> $GITHUB_OUTPUT
+          echo "links=$LINKS" >> $GITHUB_OUTPUT
+
+      - uses: starburst997/get-previous-action@v1
+        id: previous
+        with:
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Discord Notification
+        if: ${{ needs.build.outputs.discord == 'true' }}
+        uses: starburst997/discord-webhook-notify@v2
+        with:
+          severity: info
+          color: ${{ env.DISCORD_COLOR }}
+          text: "**${{ env.LANE }}**: New ${{ inputs.discord }} build available!"
+          description: "${{ env.NOTES }}\n"
+          footer: "Build time: ${{ env.DURATION }}"
+          details: "Download:${{ env.LINKS }}\n\nv${{ needs.version.outputs.version }} - [${{ needs.version.outputs.commit-sha }}](${{ needs.version.outputs.commit-url }}) ([diff](${{ steps.previous.outputs.diff-url }}))"
+          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+          username: ${{ vars.DISCORD_USERNAME }}
+          avatarUrl: ${{ vars.DISCORD_AVATAR }}
+
+      - name: Delete artifact
+        if: ${{ inputs.upload-artifact != 'true' }}
+        uses: starburst997/delete-artifact@v5
+        with:
+          name: ${{ inputs.artifact }}
+
+  failure:
+    name: Failure
+    runs-on: ${{ inputs.runner-extra }}
+    if: failure()
+    needs: [version, build, post-build]
+    steps:
+      - name: Calculate duration
+        run: |
+          printf -v now '%(%s)T'
+          duration=$((now - ${{ needs.version.outputs.time }}))
+          echo "DURATION=$(echo $duration | awk '{printf "%02d:%02d:%02d", $1/3600, ($1/60)%60, $1%60}')" >> $GITHUB_ENV
+      - name: Discord Notification
+        uses: starburst997/discord-webhook-notify@v2
+        if: ${{ env.DISCORD_WEBHOOK != '' }}
+        with:
+          severity: error
+          color: "#FF0000"
+          text: "**Failure**: ${{ inputs.discord }} build failed!"
+          description: "Build failed!\n"
+          footer: "Build time: ${{ env.DURATION }}"
+          details: "Links:\n- [Action Logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\n\nv${{ needs.version.outputs.version }}"
+          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+          username: ${{ vars.DISCORD_USERNAME }}
+          avatarUrl: ${{ vars.DISCORD_AVATAR }}

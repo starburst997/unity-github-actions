@@ -1,4 +1,0 @@
-icoextract==0.1.5
-pefile==2024.8.26
-PyYAML==6.0.1
-unityparser==4.0.0
