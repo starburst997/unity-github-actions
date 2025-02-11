@@ -26,8 +26,8 @@ jobs:
     uses: starburst997/unity-github-actions/.github/workflows/ios.yml@v1
     secrets: inherit
     with:
-      runner: 'self-hosted' # 'ubuntu-latest'
-      runner-extra: 'self-hosted' # 'ubuntu-latest'
+      runner: 'ubuntu-latest'
+      runner-extra: 'ubuntu-latest'
       runner-sign: 'macos-13'
       il2cpp: '1'
       library: 'Library-iOS'

@@ -26,7 +26,7 @@ jobs:
     uses: starburst997/unity-github-actions/.github/workflows/release.yml@v1
     secrets: inherit
     with:
-      runner: 'self-hosted' # 'ubuntu-latest'
+      runner: 'ubuntu-latest'
       notes: ${{ inputs.notes }}
       release: ${{ inputs.release }}
       release_number: ${{ inputs.release_number }}

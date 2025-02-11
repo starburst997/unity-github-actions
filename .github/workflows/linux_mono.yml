@@ -26,8 +26,8 @@ jobs:
     uses: starburst997/unity-github-actions/.github/workflows/linux.yml@v1
     secrets: inherit
     with:
-      runner: 'self-hosted' # 'ubuntu-latest'
-      runner-extra: 'self-hosted' # 'ubuntu-latest'
+      runner: 'ubuntu-latest'
+      runner-extra: 'ubuntu-latest'
       il2cpp: '0'
       library: 'Library-LinuxMono'
       artifact: 'build-linux-mono'
