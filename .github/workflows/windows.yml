@@ -1,0 +1,42 @@
+name: Build Windows (IL2CPP)
+
+on: 
+  workflow_dispatch:
+    inputs:
+      notes:
+        type: string
+        description: Release Notes
+      upload-artifact:
+        description: "Get an artifact to download"
+        type: choice
+        default: 'false'
+        options:
+          - true
+          - false
+      release:
+        description: "Release Candidate"
+        type: choice
+        default: 'false'
+        options:
+          - true
+          - false
+
+jobs:
+  build:
+    uses: starburst997/unity-github-actions/.github/workflows/windows.yml@v1
+    secrets: inherit
+    with:
+      runner: 'windows-2022'
+      runner-extra: 'ubuntu-latest'
+      runner-sign: 'windows-2022'
+      il2cpp: '1'
+      library: 'Library-Windows'
+      artifact: 'build-windows'
+      s3-folder: 'windows'
+      setup-suffix: '.setup.exe'
+      zip-suffix: '.windows.zip'
+      discord: 'Windows (IL2CPP)'
+      timeout: 45
+      notes: ${{ inputs.notes }}
+      release: ${{ inputs.release }}
+      upload-artifact: ${{ inputs.upload-artifact }}

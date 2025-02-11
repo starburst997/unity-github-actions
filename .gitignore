@@ -1,0 +1,16 @@
+build
+logs/
+.vs/
+.gradle/
+.DS_Store
+DevAuthToken.txt*
+
+[Tt]emp/
+Logs/
+[Oo]bj/
+[Bb]in/
+[Bb]inMono/
+*_output.txt
+
+.env
+.venv

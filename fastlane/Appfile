@@ -1,0 +1,20 @@
+for_platform :ios do
+  apple_dev_portal_id(ENV['APPLE_DEVELOPER_EMAIL'])
+  itunes_connect_id(ENV['APPLE_CONNECT_EMAIL'])
+  team_id(ENV['APPLE_TEAM_ID'])
+  itc_team_id(ENV['APPLE_TEAM_ID'])
+  app_identifier(ENV['IOS_BUNDLE_ID'])
+end
+
+for_platform :mac do
+  apple_dev_portal_id(ENV['APPLE_DEVELOPER_EMAIL'])
+  itunes_connect_id(ENV['APPLE_CONNECT_EMAIL'])
+  team_id(ENV['APPLE_TEAM_ID'])
+  itc_team_id(ENV['APPLE_TEAM_ID'])
+  app_identifier(ENV['MAC_BUNDLE_ID'])
+end
+
+for_platform :android do
+  package_name(ENV["ANDROID_PACKAGE_NAME"])
+  json_key_file(ENV["GOOGLE_PLAY_KEY_FILE_PATH"])
+end

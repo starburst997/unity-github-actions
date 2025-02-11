@@ -1,0 +1,52 @@
+name: Release
+
+on: 
+  workflow_dispatch:
+    inputs:
+      notes:
+        type: string
+        description: Release Notes
+      release:
+        description: "Use release candidates?"
+        type: choice
+        default: 'false'
+        options:
+          - true
+          - false
+      release_number:
+        description: "Force same release number"
+        type: choice
+        default: 'false'
+        options:
+          - true
+          - false
+
+jobs:
+  build:
+    uses: starburst997/unity-github-actions/.github/workflows/release.yml@v1
+    secrets: inherit
+    with:
+      runner: 'self-hosted' # 'ubuntu-latest'
+      notes: ${{ inputs.notes }}
+      release: ${{ inputs.release }}
+      release_number: ${{ inputs.release_number }}
+
+      s3-windows-mono: 'windows-mono'
+      s3-macos-mono: 'macos-mono'
+      s3-linux-mono: 'linux-mono'
+      s3-windows: 'windows'
+      s3-macos: 'macos'
+      s3-linux: 'linux'
+      s3-android: 'android'
+      s3-ios: 'ios'
+      s3-webgl: 'webgl'
+      
+      windows-mono: 'Windows (mono)'
+      macos-mono: 'macOSs (mono)'
+      linux-mono: 'Linux (mono)'
+      windows: 'Windows'
+      macos: 'macOS'
+      linux: 'Linux'
+      android: 'Android'
+      ios: 'iOS'
+      webgl: 'WebGL'

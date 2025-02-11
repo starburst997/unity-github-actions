@@ -1,0 +1,58 @@
+name: Build macOS (mono)
+
+on: 
+  workflow_dispatch:
+    inputs:
+      notes:
+        type: string
+        description: Release Notes
+      upload-artifact:
+        description: "Get an artifact to download"
+        type: choice
+        default: 'false'
+        options:
+          - true
+          - false
+      generate-appstore:
+        description: "Release on AppStore / Testflight"
+        type: choice
+        default: 'true'
+        options:
+          - true
+          - false
+      generate-dmg:
+        description: "Create a DMG"
+        type: choice
+        default: 'true'
+        options:
+          - true
+          - false
+      release:
+        description: "Release Candidate"
+        type: choice
+        default: 'false'
+        options:
+          - true
+          - false
+
+jobs:
+  build:
+    uses: starburst997/unity-github-actions/.github/workflows/macos.yml@v1
+    secrets: inherit
+    with:
+      runner: 'self-hosted' # 'ubuntu-latest'
+      runner-extra: 'self-hosted' # 'ubuntu-latest'
+      runner-sign: 'macos-13'
+      il2cpp: '0'
+      library: 'Library-MacOSMono'
+      artifact: 'build-macos-mono'
+      s3-folder: 'macos-mono'
+      zip-suffix: '.macos-mono.zip'
+      dmg-suffix: '.mono.dmg'
+      discord: 'macOS (mono)'
+      timeout: 30
+      notes: ${{ inputs.notes }}
+      release: ${{ inputs.release }}
+      upload-artifact: ${{ inputs.upload-artifact }}
+      generate-appstore: ${{ inputs.generate-appstore }}
+      generate-dmg: ${{ inputs.generate-dmg }}

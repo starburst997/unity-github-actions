@@ -1,0 +1,42 @@
+name: Build Windows (mono)
+
+on: 
+  workflow_dispatch:
+    inputs:
+      notes:
+        type: string
+        description: Release Notes
+      upload-artifact:
+        description: "Get an artifact to download"
+        type: choice
+        default: 'false'
+        options:
+          - true
+          - false
+      release:
+        description: "Release Candidate"
+        type: choice
+        default: 'false'
+        options:
+          - true
+          - false
+
+jobs:
+  build:
+    uses: starburst997/unity-github-actions/.github/workflows/windows.yml@v1
+    secrets: inherit
+    with:
+      runner: 'self-hosted' # 'ubuntu-latest'
+      runner-extra: 'self-hosted' # 'ubuntu-latest'
+      runner-sign: 'windows-2022'
+      il2cpp: '0'
+      library: 'Library-WindowsMono'
+      artifact: 'build-windows-mono'
+      s3-folder: 'windows-mono'
+      setup-suffix: '.mono.setup.exe'
+      zip-suffix: '.windows-mono.zip'
+      discord: 'Windows (mono)'
+      timeout: 30
+      notes: ${{ inputs.notes }}
+      release: ${{ inputs.release }}
+      upload-artifact: ${{ inputs.upload-artifact }}

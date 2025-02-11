@@ -1,0 +1,14 @@
+name: Apple Setup
+
+on: workflow_dispatch
+
+jobs:
+  setup:
+    uses: starburst997/unity-github-actions/.github/workflows/apple_setup.yml@v1
+    secrets: inherit
+    with:
+      generate_macos: true
+      generate_ios: true
+      generate_appstore: true
+      generate_developer_id: true
+      use_session: true

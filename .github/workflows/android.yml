@@ -1,0 +1,40 @@
+name: Build Android
+
+on: 
+  workflow_dispatch:
+    inputs:
+      notes:
+        type: string
+        description: Release Notes
+      upload-artifact:
+        description: "Get an artifact to download"
+        type: choice
+        default: 'false'
+        options:
+          - true
+          - false
+      release:
+        description: "Release Candidate"
+        type: choice
+        default: 'false'
+        options:
+          - true
+          - false
+
+jobs:
+  build:
+    uses: starburst997/unity-github-actions/.github/workflows/android.yml@v1
+    secrets: inherit
+    with:
+      runner: 'self-hosted' # 'ubuntu-latest'
+      runner-extra: 'self-hosted' # 'ubuntu-latest'
+      il2cpp: '1'
+      library: 'Library-Android'
+      artifact: 'build-android'
+      s3-folder: 'android'
+      discord: 'Android'
+      lane: 'internal'
+      timeout: 60
+      notes: ${{ inputs.notes }}
+      release: ${{ inputs.release }}
+      upload-artifact: ${{ inputs.upload-artifact }}

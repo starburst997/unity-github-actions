@@ -1,0 +1,40 @@
+name: Build Linux (IL2CPP)
+
+on: 
+  workflow_dispatch:
+    inputs:
+      notes:
+        type: string
+        description: Release Notes
+      upload-artifact:
+        description: "Get an artifact to download"
+        type: choice
+        default: 'false'
+        options:
+          - true
+          - false
+      release:
+        description: "Release Candidate"
+        type: choice
+        default: 'false'
+        options:
+          - true
+          - false
+
+jobs:
+  build:
+    uses: starburst997/unity-github-actions/.github/workflows/linux.yml@v1
+    secrets: inherit
+    with:
+      runner: 'self-hosted' # 'ubuntu-latest'
+      runner-extra: 'self-hosted' # 'ubuntu-latest'
+      il2cpp: '1'
+      library: 'Library-Linux'
+      artifact: 'build-linux'
+      s3-folder: 'linux'
+      zip-suffix: '.linux.zip'
+      discord: 'Linux (IL2CPP)'
+      timeout: 45
+      notes: ${{ inputs.notes }}
+      release: ${{ inputs.release }}
+      upload-artifact: ${{ inputs.upload-artifact }}

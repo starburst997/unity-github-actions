@@ -1,0 +1,39 @@
+name: Build WebGL
+
+on: 
+  workflow_dispatch:
+    inputs:
+      notes:
+        type: string
+        description: Release Notes
+      upload-artifact:
+        description: "Get an artifact to download"
+        type: choice
+        default: 'false'
+        options:
+          - true
+          - false
+      release:
+        description: "Release Candidate"
+        type: choice
+        default: 'false'
+        options:
+          - true
+          - false
+
+jobs:
+  build:
+    uses: starburst997/unity-github-actions/.github/workflows/webgl.yml@v1
+    secrets: inherit
+    with:
+      runner: 'self-hosted' # 'ubuntu-latest'
+      runner-extra: 'self-hosted' # 'ubuntu-latest'
+      library: 'Library-WebGL'
+      artifact: 'build-webgl'
+      s3-folder: 'webgl'
+      zip-suffix: '.webgl.zip'
+      discord: 'WebGL'
+      timeout: 45
+      notes: ${{ inputs.notes }}
+      release: ${{ inputs.release }}
+      upload-artifact: ${{ inputs.upload-artifact }}

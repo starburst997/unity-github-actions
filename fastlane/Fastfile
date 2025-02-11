@@ -1,0 +1,17 @@
+import_from_git(
+  url: "https://github.com/starburst997/unity-github-actions.git",
+  branch: "v1",
+  path: "fastlane/android/Fastfile"
+)
+
+import_from_git(
+  url: "https://github.com/starburst997/unity-github-actions.git",
+  branch: "v1",
+  path: "fastlane/ios/Fastfile"
+)
+
+import_from_git(
+  url: "https://github.com/starburst997/unity-github-actions.git",
+  branch: "v1",
+  path: "fastlane/macos/Fastfile"
+)
