@@ -32,9 +32,9 @@ Start by creating a new repository using [this template](https://github.com/star
 
 <br/>
 
-## Secrets
+## Secrets / Variables
 
-There's a bunch of secrets we need to gather to have everything working, so buckle up. Skip any platforms / app stores you don't need.
+There's a bunch of secrets / variables we need to gather to have everything working, so buckle up. Skip any platforms / app stores you don't need. You need to set them in your repository settings in Github.
 
 I suggests that you also add all of those secrets to a Password Manager. They can be re-used for your next projects, speeding up the process.
 
@@ -182,7 +182,7 @@ Some miscellaneous secrets to personalize the workflows.
 
 ## Run the actions
 
-Now that we have all the needed secrets, we can call the workflow for each platforms individually to test each release. To do so, go to the **Actions** tab of your repository in Github, select a platform on the left panel and click **Run workflow**.
+Now that we have all the needed secrets and variables, we can call the workflow for each platforms individually to test each release. To do so, go to the **Actions** tab of your repository in Github, select a platform on the left panel and click **Run workflow**.
 
 iOS / macOS requires that you run the **Apple Setup** workflow once to link it to the [match](https://docs.fastlane.tools/actions/match/) repository.
 
