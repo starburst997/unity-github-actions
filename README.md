@@ -251,9 +251,9 @@ Don't worry, it simply replace the string `ACTIONS_CACHE_URL` inside the DLL so 
 
 *(optional)* By using an organization instead of your personal account, you can setup all the secrets to be shared accross all the repositories (*only paid plans*), making it even faster to setup a new project. Bonus: you only need to setup one self-hosted runner as well since they are locked to one repository each otherwise.
 
-You'll need to fork this template and replace all instances of `uses: starburst997/unity-github-actions` with `uses: <YOUR_ORG>>/unity-github-actions`. This is needed because referenced workflows needs to be from the same organization to inherit secrets.
+You'll need to fork this template and replace all instances of `uses: starburst997/unity-github-actions` with `uses: <YOUR_ORG>>/unity-github-actions`. This is needed because referenced workflows needs to be from the same organization to inherit secrets. See [this diff](https://github.com/starburst997/unity-github-actions/compare/main...jd-boiv-in:unity-github-actions:main).
 
-*(temporary until I fix this issue)* You'll also need to fork [this repository](https://github.com/starburst997/yearly-version) and replace all instances as well in your forked template repository in the `v1` branch to use this new fork instead.
+*(temporary until I fix this issue)* You'll also need to fork [this repository](https://github.com/starburst997/yearly-version) and replace all instances as well in your forked template repository in the `v1` branch to use this new fork instead. See [this diff](https://github.com/starburst997/unity-github-actions/compare/v1...jd-boiv-in:unity-github-actions:v1).
 
 <br/>
 
