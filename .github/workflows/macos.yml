@@ -196,6 +196,15 @@ jobs:
           key: xcode-macos-${{ github.sha }}
           restore-keys: xcode-macos-
 
+      - uses: starburst997/brew-install@v1
+        with:
+          packages: gnu-sed graphicsmagick imagemagick
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: macos-npm
+
       - run: rm -Rf project
       - name: Download Artifact
         uses: actions/download-artifact@v4
@@ -210,7 +219,6 @@ jobs:
 
       - name: Add Hardened Runtime
         run: |
-          brew install gnu-sed
           gsed -i '/INFOPLIST_FILE = /a ENABLE_HARDENED_RUNTIME = YES;' project/StandaloneOSX.xcodeproj/project.pbxproj
         
       - name: Run fastlane
@@ -269,7 +277,6 @@ jobs:
         if: ${{ inputs.generate-dmg }}
         run: |
           npm install --global starburst997/create-dmg
-          brew install graphicsmagick imagemagick
       - uses: starburst997/retry@v3
         if: ${{ inputs.generate-dmg }}
         with:
