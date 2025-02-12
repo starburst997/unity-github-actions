@@ -271,8 +271,8 @@ jobs:
         run: |
           rm -Rf developer-id.app.zip
           rm -Rf ${{ env.TARGET }}.app
-          mv developer-id.app ${{ vars.APP_NAME }}.app
-          zip -qq -r ../artifacts/${{ vars.APP_NAME }}${{ inputs.zip-suffix }} ${{ vars.APP_NAME }}.app
+          mv developer-id.app "${{ vars.APP_NAME_DISPLAY }}.app"
+          zip -qq -r ../artifacts/${{ vars.APP_NAME }}${{ inputs.zip-suffix }} "${{ vars.APP_NAME_DISPLAY }}.app"
 
       # DMG can fails a lot apparently, so simply try again
       # Error: `hdiutil: detach failed`...
@@ -287,7 +287,7 @@ jobs:
           timeout_seconds: 15
           max_attempts: 5
           continue_on_error: true
-          command: create-dmg "build/${{ vars.APP_NAME }}.app" build --overwrite --dmg-title=${{ vars.APP_NAME_DISPLAY }}
+          command: create-dmg "build/${{ vars.APP_NAME_DISPLAY }}.app" build --overwrite --dmg-title="${{ vars.APP_NAME_DISPLAY }}"
 
       - name: Sign DMG
         if: ${{ inputs.generate-dmg }}
