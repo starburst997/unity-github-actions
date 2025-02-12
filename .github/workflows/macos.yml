@@ -283,7 +283,7 @@ jobs:
           timeout_seconds: 15
           max_attempts: 5
           continue_on_error: true
-          command: create-dmg "build/${{ vars.APP_NAME }}.app" build
+          command: create-dmg "build/${{ vars.APP_NAME }}.app" build --overwrite --dmg-title=${{ vars.APP_NAME_DISPLAY }}
 
       - name: Sign DMG
         if: ${{ inputs.generate-dmg }}
