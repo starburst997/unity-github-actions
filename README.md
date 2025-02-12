@@ -36,7 +36,7 @@ Start by creating a new repository using [this template](https://github.com/star
 
 There's a bunch of secrets we need to gather to have everything working, so buckle up. Skip any platforms / app stores you don't need.
 
-I suggests that you also add all of those secrets to a Password Manager. Most of these can be re-used for your next projects, speeding up the process.
+I suggests that you also add all of those secrets to a Password Manager. They can be re-used for your next projects, speeding up the process.
 
 <br/>
 
