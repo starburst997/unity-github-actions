@@ -193,7 +193,7 @@ jobs:
           #file-description: '${{ secrets.APP_DESCRIPTION }}'
           file-version: '${{ needs.version.outputs.version }}'
           legal-copyright: 'Copyright ${{ needs.version.outputs.year }} ${{ vars.APP_COMPANY }}'
-          product-name: '${{ vars.APP_NAME }}'
+          product-name: '${{ vars.APP_NAME_DISPLAY }}'
           product-version: '${{ needs.version.outputs.year }}.${{ needs.version.outputs.release }}'
 
       - name: Sign files with Trusted Signing
