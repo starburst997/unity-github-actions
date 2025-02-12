@@ -262,13 +262,17 @@ jobs:
           [[ $GENERATE_PKG == true ]] && bundle exec fastlane mac pkg
           echo "Finshed!"
 
+      - run: |
+          rm -Rf artifacts
+          mkdir artifacts
+
       - name: Zip .app
         working-directory: build
         run: |
           rm -Rf developer-id.app.zip
           rm -Rf ${{ env.TARGET }}.app
           mv developer-id.app ${{ vars.APP_NAME }}.app
-          zip -qq -r ${{ vars.APP_NAME }}${{ inputs.zip-suffix }} ${{ vars.APP_NAME }}.app
+          zip -qq -r ../artifacts/${{ vars.APP_NAME }}${{ inputs.zip-suffix }} ${{ vars.APP_NAME }}.app
 
       # DMG can fails a lot apparently, so simply try again
       # Error: `hdiutil: detach failed`...
@@ -322,22 +326,16 @@ jobs:
           eval "$(ssh-agent -s)"
           ssh-add - <<< "${MATCH_DEPLOY_KEY}"
           bundle exec fastlane mac notarize_dmg
-          mv build/developer-id.dmg build/${{ vars.APP_NAME }}${{ inputs.dmg-suffix }}
+          mv build/developer-id.dmg artifacts/${{ vars.APP_NAME }}${{ inputs.dmg-suffix }}
 
       - name: Cleanup
-        run: |
-          rm -Rf build/${{ vars.APP_NAME }}.app
-          rm -Rf build/developer-id.app
-          rm -Rf build/appstore.app.dSYM.zip
-          rm -Rf build/appstore.pkg
-          rm -Rf build/developer-id.app.dSYM.zip
-          ls -la build
+        run: rm -Rf build
 
       - name: Re-upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.artifact }}
-          path: build
+          path: artifacts
           overwrite: true
 
   post-build:
