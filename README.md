@@ -304,6 +304,6 @@ It took a bit more time than I expected but at least I have a workflow for build
 
 I don't need to worry about certificates or read the same stack overflow answer years after years on how to generate some keys, I can simply set it up one time and be done (with automatic renewal).
 
-The "building the unity app" step is pretty self-contained and could be adapted for any frameworks / engines, maybe Godot could be next...
+The "building the unity app" step is pretty self-contained and could be adapted for any frameworks / engines, maybe [Godot](https://godotengine.org/) could be next...
 
 <br/>
