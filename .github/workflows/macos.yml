@@ -72,6 +72,9 @@ on:
       generate-dmg:
         default: 'true'
         type: string
+      xcode-cache:
+        default: 'false'
+        type: string
 
 jobs:
   version:
@@ -187,6 +190,12 @@ jobs:
           bundler-cache: true
           add-platform: true
       
+      - uses: starburst997/xcode-cache@v1
+        if: ${{ inputs.xcode-cache == 'true' }}
+        with:
+          key: xcode-macos-${{ github.sha }}
+          restore-keys: xcode-macos-
+
       - run: rm -Rf project
       - name: Download Artifact
         uses: actions/download-artifact@v4

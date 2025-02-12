@@ -54,6 +54,9 @@ on:
       runner-sign:
         default: 'macos-13'
         type: string
+      xcode-cache:
+        default: 'false'
+        type: string
 
 jobs:
   version:
@@ -151,6 +154,12 @@ jobs:
           bundler-cache: true
           add-platform: true
       
+      - uses: starburst997/xcode-cache@v1
+        if: ${{ inputs.xcode-cache == 'true' }}
+        with:
+          key: xcode-ios-${{ github.sha }}
+          restore-keys: xcode-ios-
+
       - run: rm -Rf project
       - name: Download Artifact
         uses: actions/download-artifact@v4
