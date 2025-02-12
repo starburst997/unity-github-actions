@@ -286,7 +286,15 @@ For Google Play / Apple App Store, I manually select the build I vetted from the
 
 ## End results
 
-SCREENSHOTS
+<table align="center"><tr><td>
+<a href="https://jd.boiv.in/assets/posts/2025-02-11-unity-github-actions/results-01.png" target="_blank"><img src="https://jd.boiv.in/assets/posts/2025-02-11-unity-github-actions/small/results-01.png" alt="Build binary using Github Action" title="Build binary using Github Action"/></a><p align="center">1</p>
+</td><td>
+<a href="https://jd.boiv.in/assets/posts/2025-02-11-unity-github-actions/results-02.png" target="_blank"><img src="https://jd.boiv.in/assets/posts/2025-02-11-unity-github-actions/small/results-02.png" alt="Discord Notifications" title="Discord Notifications"/></a><p align="center">2</p>
+</td><td>
+<a href="https://jd.boiv.in/assets/posts/2025-02-11-unity-github-actions/results-03.png" target="_blank"><img src="https://jd.boiv.in/assets/posts/2025-02-11-unity-github-actions/small/results-03.png" alt="Github release" title="Github release" /></a><p align="center">3</p>
+</td><td>
+<a href="https://jd.boiv.in/assets/posts/2025-02-11-unity-github-actions/results-04.png" target="_blank"><img src="https://jd.boiv.in/assets/posts/2025-02-11-unity-github-actions/small/results-04.png" alt="Automatic publishing to Apple App Store" title="Automatic publishing to Apple App Store" /></a><p align="center">4</p>
+</td></tr></table>
 
 1. Build the platform of your choice with Github Actions.
 
