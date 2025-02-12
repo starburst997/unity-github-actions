@@ -1,11 +1,12 @@
-//#define App "Unity.Test"
+//#define AppDisplay "Unity Test"
+//#define App "unity-test"
 //#define Folder "build-windows"
 //#define Version "1.0.0"
 //#define Copyright "Copyright (C) 2025 Jean-Denis Boivin"
 //#define Company "Jean-Denis Boivin"
 
 [Setup]
-AppName={#App}
+AppName={#AppDisplay}
 AppVersion={#Version}
 VersionInfoVersion={#Version}
 AppCopyright={#Copyright}

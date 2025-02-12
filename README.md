@@ -164,7 +164,8 @@ Some miscellaneous secrets to personalize the workflows.
 
 #### Misc Variables
 
-- `APP_NAME`: The value that will be used to name the file for distribution (ex; `MyGame` for "MyGame.zip")
+- `APP_NAME`: The value that will be used to name the file for distribution (ex; `my-game` for "my-game.zip")
+- `APP_NAME_DISPLAY`: Name of your app for display (ex; `My Game`)
 - `APP_COMPANY`: Company name for some metadata (ex; `Your Name`)
 - `APP_UNITY_PATH`: Path to your Unity project (ex; `Unity.Test`)
 - `APP_UNITY_VERSION`: The unity version (ex; `6000.0.35f1`)
