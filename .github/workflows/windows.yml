@@ -220,7 +220,7 @@ jobs:
         if: ${{ needs.build.outputs.setup == 'true' }}
         run: |
           cp build/icon.ico icon.ico
-          echo '#define AppDisplay "${{ vars.APP_NAME_DISPLAY }}"' >> setup.iss
+          echo '#define AppDisplay "${{ vars.APP_NAME_DISPLAY }}"' > setup.iss
           echo '#define App "${{ vars.APP_NAME }}"' >> setup.iss
           echo '#define Folder "build/windows"' >> setup.iss
           echo '#define Version "${{ needs.version.outputs.year }}.${{ needs.version.outputs.release }}"' >> setup.iss
