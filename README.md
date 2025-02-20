@@ -222,10 +222,11 @@ version: '3.9'
 name: cache-fix
 services:
   cache-server:
-    image: ghcr.io/falcondev-oss/github-actions-cache-server:latest
+    image: ghcr.io/falcondev-oss/github-actions-cache-server:4
     ports:
       - '3000:3000'
     environment:
+      URL_ACCESS_TOKEN: XXXXXXXX
       API_BASE_URL: http://localhost:3000
       CLEANUP_OLDER_THAN_DAYS: 30
     volumes:
@@ -241,17 +242,18 @@ And start the cache server: `docker compose up` (inside your VM)
 Set this environment variable inside `~/actions-runner/.env`
 
 ```sh
-ACTIONS_RESULTS_URL=http://localhost:3000/
+ACTIONS_CACHE_URL=http://localhost:3000/XXXXXXXX/
 ```
 
-Now we need to patch the DLLs of our Github Runner to use our `ACTIONS_RESULTS_URL` environment variable that will point to our cache server.
+Now we need to patch the DLLs of our Github Runner to use our `ACTIONS_CACHE_URL` environment variable that will point to our cache server.
 
 ```sh
 cp -n ~/actions-runner/bin/Runner.Worker.dll ~/Runner.Worker.backup.dll
-sed -i 's/\x41\x00\x43\x00\x54\x00\x49\x00\x4F\x00\x4E\x00\x53\x00\x5F\x00\x52\x00\x45\x00\x53\x00\x55\x00\x4C\x00\x54\x00\x53\x00\x5F\x00\x55\x00\x52\x00\x4C\x00/\x41\x00\x43\x00\x54\x00\x49\x00\x4F\x00\x4E\x00\x53\x00\x5F\x00\x52\x00\x45\x00\x53\x00\x55\x00\x4C\x00\x54\x00\x53\x00\x5F\x00\x4F\x00\x52\x00\x4C\x00/g' ~/actions-runner/bin/Runner.Worker.dll
+sed -i 's/\x41\x00\x43\x00\x54\x00\x49\x00\x4F\x00\x4E\x00\x53\x00\x5F\x00\x43\x00\x41\x00\x43\x00\x48\x00\x45\x00\x5F\x00\x55\x00\x52\x00\x4C\x00/\x41\x00\x43\x00\x54\x00\x49\x00\x4F\x00\x4E\x00\x53\x00\x5F\x00\x43\x00\x41\x00\x43\x00\x48\x00\x45\x00\x5F\x00\x4F\x00\x52\x00\x4C\x00/g' ~/actions-runner/bin/Runner.Worker.dll
+sed -i 's/\x41\x00\x43\x00\x54\x00\x49\x00\x4F\x00\x4E\x00\x53\x00\x5F\x00\x43\x00\x41\x00\x43\x00\x48\x00\x45\x00\x5F\x00\x53\x00\x45\x00\x52\x00\x56\x00\x49\x00\x43\x00\x45\x00\x5F\x00\x56\x00\x32\x00/\x41\x00\x43\x00\x54\x00\x49\x00\x4F\x00\x4E\x00\x53\x00\x5F\x00\x43\x00\x41\x00\x43\x00\x48\x00\x45\x00\x5F\x00\x53\x00\x45\x00\x52\x00\x56\x00\x49\x00\x43\x00\x45\x00\x5F\x00\x56\x00\x31\x00/g' ~/actions-runner/bin/Runner.Worker.dll
 ```
 
-Don't worry, it simply replace the string `ACTIONS_RESULTS_URL` inside the DLL so our variable doesn't get overwritten.
+Don't worry, it simply replace the string `ACTIONS_CACHE_URL` inside the DLL so our variable doesn't get overwritten.
 
 *(they should really allow this option officially...)*
 
