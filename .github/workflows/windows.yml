@@ -180,8 +180,8 @@ jobs:
       - name: Rename EXE
         working-directory: build/StandaloneWindows64
         run: |
-          mv "StandaloneWindows64.exe" "${{ vars.APP_NAME }}.exe"
-          mv "StandaloneWindows64_Data" "${{ vars.APP_NAME }}_Data"
+          mv "StandaloneWindows64.exe" "${{ vars.APP_NAME_DISPLAY }}.exe"
+          mv "StandaloneWindows64_Data" "${{ vars.APP_NAME_DISPLAY }}_Data"
           
       - name: Rename folder
         working-directory: build
@@ -191,7 +191,7 @@ jobs:
         uses: starburst997/rcedit-action@v2
         with:
           directory-path: 'build/windows'
-          exe-file-name: '${{ vars.APP_NAME }}.exe'
+          exe-file-name: '${{ vars.APP_NAME_DISPLAY }}.exe'
           company-name: '${{ vars.APP_COMPANY }}'
           #file-description: '${{ secrets.APP_DESCRIPTION }}'
           file-version: '${{ needs.version.outputs.version }}'
@@ -213,7 +213,7 @@ jobs:
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
           files: |
-            ${{ github.workspace }}\build\windows\${{ vars.APP_NAME }}.exe
+            ${{ github.workspace }}\build\windows\${{ vars.APP_NAME_DISPLAY }}.exe
           #  ${{ github.workspace }}\build\windows\GameAssembly.dll
 
       - name: Generate setup
