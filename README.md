@@ -28,7 +28,7 @@ Basically, once all the secrets are added to the repository, the workflows are a
 
 <br/>
 
-## Use template
+## Use this template
 
 Start by creating a new repository using [this template](https://github.com/starburst997/unity-github-actions), it includes a sample "Hello World" Unity project in the folder `Unity.Test` which you can replace with your own. But I suggest you first starts by running the various actions using this simple project first to eliminate any issues that might be specific to your project.
 
