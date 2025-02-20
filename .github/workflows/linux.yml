@@ -72,6 +72,9 @@ jobs:
     outputs:
       discord: ${{ steps.output.outputs.discord }}
       s3: ${{ steps.output.outputs.s3 }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -150,6 +153,9 @@ jobs:
     name: Post Build
     runs-on: ${{ inputs.runner-extra }}
     needs: [version, build]
+    defaults:
+      run:
+        shell: bash
     outputs:
       zip-name: ${{ steps.vars.outputs.zip-name }}
       zip-url: ${{ steps.vars.outputs.zip-url }}
@@ -247,6 +253,9 @@ jobs:
     runs-on: ${{ inputs.runner-extra }}
     if: failure()
     needs: [version, build, post-build]
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Calculate duration
         run: |
