@@ -14,6 +14,7 @@ choco install git-lfs.install -y
 choco install 7zip.install -y
 choco install innosetup -y
 choco install dotnet -y
+choco install pwsh -y --pre
 
 # Couldn't get docker to work properly...
 #choco install docker-desktop -y
