@@ -75,7 +75,7 @@ jobs:
       s3: ${{ steps.output.outputs.s3 }}
     steps:
       - name: Free Disk Space
-        if: ${{ inputs.runner != 'self-hosted' }}
+        if: ${{ inputs.runner != 'self-hosted' && inputs.runner != 'self-hosted-linux' }}
         uses: starburst997/free-disk-space@main
         with:
           large-packages: false
