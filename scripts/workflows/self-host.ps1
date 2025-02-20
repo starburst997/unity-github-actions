@@ -14,7 +14,9 @@ choco install git-lfs.install -y
 choco install 7zip.install -y
 choco install innosetup -y
 choco install dotnet -y
-choco install pwsh -y --pre
+choco install dotnet-sdk -y
+choco install pwsh -y
+choco install rcedit -y
 
 # Couldn't get docker to work properly...
 #choco install docker-desktop -y
@@ -36,6 +38,14 @@ $newpath = "$oldpath;$($pwd.Path)"
 Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH -Value $newPath
 (Get-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH).Path
 [Environment]::SetEnvironmentVariable("Path", $env:Path + ";$($pwd.Path)", "User")
+
+# Add git bin to PATH
+cd "C:\Program Files\Git\bin"
+$oldpath = (Get-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH).path
+$newpath = "$($pwd.Path);$oldpath"
+Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH -Value $newPath
+(Get-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH).Path
+[Environment]::SetEnvironmentVariable("Path", "$($pwd.Path);" + $env:Path, "User")
 
 cd $PSScriptRoot
 
