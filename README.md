@@ -8,7 +8,7 @@ This is very much opinionated, feel free to use as a starter-pack and modify as 
 
 *(coming soon: Steam, itch.io, Windows Store and whatever is the flavor of the month for a Linux App Store)*
 
-*(final part of my series on code-signing / distributing apps, check [Part 3 on Android](https://github.com/starburst997/android-code-sign))*
+*(final part of my series on code-signing / distributing apps, check [Part 1 on Windows Code-Signing](https://github.com/starburst997/windows-code-sign))*
 
 <br/>
 
@@ -313,5 +313,13 @@ It took a bit more time than I expected but at least I have a workflow for build
 I don't need to worry about certificates or read the same stack overflow answer years after years on how to generate some keys, I can simply set it up one time and be done (with automatic renewal).
 
 The "building the unity app" step is pretty self-contained and could be adapted for any frameworks / engines, maybe [Godot](https://godotengine.org/) could be next...
+
+<br/>
+
+Code-signing / distributing app series:
+- Part 1: [Code Signing for Windows as an Individual Developer](https://github.com/starburst997/windows-code-sign)
+- Part 2: [Code Signing for Apple without a mac](https://github.com/starburst997/apple-code-sign)
+- Part 3: [Code Signing for Android via Github Actions](https://github.com/starburst997/android-code-sign)
+- Part 4: [Build and publish your Unity Game using Github Actions](https://github.com/starburst997/windows-code-sign)
 
 <br/>
