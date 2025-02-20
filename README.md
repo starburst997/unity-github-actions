@@ -219,7 +219,7 @@ Create a yml file for docker (follow [this guide](https://docs.docker.com/get-st
 #### docker-compose.yml
 ```yml
 version: '3.9'
-
+name: cache-fix
 services:
   cache-server:
     image: ghcr.io/falcondev-oss/github-actions-cache-server:latest
