@@ -164,15 +164,18 @@ jobs:
     runs-on: ${{ inputs.runner-sign }}
     needs: [version, build]
     steps:
-      #- run: rm -Rf build
+      - name: Create artifact folder
+        shell: bash
+        run: |
+          rm -Rf build
+          rm -Rf artifact
+          mkdir artifact
+
       - name: Download Artifact
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.artifact }}
           path: build
-
-      - name: Create artifact folder
-        run: mkdir artifact
 
       - name: Rename EXE
         working-directory: build/StandaloneWindows64
