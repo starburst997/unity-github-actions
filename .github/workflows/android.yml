@@ -25,6 +25,9 @@ on:
       upload-artifact:
         default: 'false'
         type: string
+      google-play:
+        default: 'true'
+        type: string
       lane:
         default: 'internal'
         type: string
@@ -187,6 +190,7 @@ jobs:
 
       - name: Upload to Google Play Internal
         uses: starburst997/fastlane-action@v3.0.0
+        if: ${{ inputs.google-play == 'true' }}
         with:
           lane: 'android ${{ inputs.lane }}'
 
