@@ -6,6 +6,13 @@ on:
       notes:
         type: string
         description: Release Notes
+      google-play:
+        description: "Upload to Google Play"
+        type: choice
+        default: 'true'
+        options:
+          - true
+          - false
       upload-artifact:
         description: "Get an artifact to download"
         type: choice
@@ -38,3 +45,4 @@ jobs:
       notes: ${{ inputs.notes }}
       release: ${{ inputs.release }}
       upload-artifact: ${{ inputs.upload-artifact }}
+      google-play: ${{ inputs.google-play }}
