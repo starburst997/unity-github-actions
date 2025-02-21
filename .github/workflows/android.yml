@@ -221,6 +221,7 @@ jobs:
         continue-on-error: true
         working-directory: build
         run: |
+          cp Android.aab Android_signed.aab
           zip -d Android.aab META-INF/\* || true
 
       # Download bundletool to generate a .APK from the .AAB for external distribution
@@ -255,6 +256,18 @@ jobs:
           jarsigner -sigalg SHA256withRSA -digestalg SHA-256 \
           -keystore .keystore -storepass "${{ secrets.ANDROID_KEYSTORE_PASS }}" -keypass "${{ secrets.ANDROID_KEYALIAS_PASS }}" \
           "android.apk" "${{ secrets.ANDROID_KEYALIAS_NAME }}"
+
+      - name: Cleanup
+        if: ${{ inputs.google-play == 'true' }}
+        working-directory: build
+        run: |
+          rm Android_signed.aab
+      
+      - name: Cleanup
+        if: ${{ inputs.google-play != 'true' }}
+        working-directory: build
+        run: |
+          mv Android_signed.aab ${{ vars.APP_NAME }}.aab
 
       - name: Cleanup
         working-directory: build
