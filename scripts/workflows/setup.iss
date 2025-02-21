@@ -1,5 +1,5 @@
 //#define AppDisplay "Unity Test"
-//#define App "unity-test"
+//#define App "Unity.Test"
 //#define Folder "build-windows"
 //#define Version "1.0.0"
 //#define Copyright "Copyright (C) 2025 Jean-Denis Boivin"
@@ -12,8 +12,8 @@ VersionInfoVersion={#Version}
 AppCopyright={#Copyright}
 AppPublisher={#Company}
 WizardStyle=modern
-DefaultDirName={autopf}\{#App}
-DefaultGroupName={#App}
+DefaultDirName={autopf}\{#AppDisplay}
+DefaultGroupName={#AppDisplay}
 Compression=lzma2
 SolidCompression=yes
 OutputDir=setup
@@ -22,7 +22,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=lowest
 OutputBaseFilename={#App}.setup
 SetupIconFile=icon.ico
-UninstallDisplayIcon={app}\{#App}.exe
+UninstallDisplayIcon={app}\{#AppDisplay}.exe
 CloseApplications=force
 
 //PrivilegesRequiredOverridesAllowed=dialog 
@@ -32,10 +32,10 @@ PrivilegesRequiredOverridesAllowed=commandline
 Source: "{#Folder}\*"; DestDir: "{app}\"; Flags: ignoreversion recursesubdirs
 
 [Icons]
-Name: "{group}\{#App}"; Filename: "{app}\{#App}.exe"
+Name: "{group}\{#AppDisplay}"; Filename: "{app}\{#AppDisplay}.exe"
 
 [Run]
-Filename: {app}\{#App}.exe; Description: {cm:LaunchProgram,{#App}}; Flags: nowait postinstall skipifsilent
+Filename: {app}\{#AppDisplay}.exe; Description: {cm:LaunchProgram,{#AppDisplay}}; Flags: nowait postinstall skipifsilent
 
 // Personally, I prefer installers that are "one-click", this auto skip all pages and user inputs
 // This makes the installer act as if "/SILENT" was used
