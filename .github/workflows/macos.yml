@@ -114,7 +114,7 @@ jobs:
       - run: pip install -r requirements.txt
 
       - name: Change package name / set il2cpp
-        run: python scripts/workflows/update-project.py ${{ env.UNITY_PATH }} ${{ vars.IOS_BUNDLE_ID }} ${{ vars.MAC_BUNDLE_ID }} ${{ vars.ANDROID_PACKAGE_NAME }} ${{ inputs.il2cpp }} ${{ needs.version.outputs.build }}
+        run: python scripts/workflows/update-project.py "${{ env.UNITY_PATH }}" ${{ vars.IOS_BUNDLE_ID }} ${{ vars.MAC_BUNDLE_ID }} ${{ vars.ANDROID_PACKAGE_NAME }} ${{ inputs.il2cpp }} ${{ needs.version.outputs.build }}
 
       - name: Create directory first to prevent permission error
         run:  |
@@ -163,7 +163,7 @@ jobs:
         run: |
           cp -r build/StandaloneOSX/StandaloneOSX ./
           mv StandaloneOSX artifact
-          cp ${{ env.UNITY_PATH }}/Assets/Plugins/macOS/Unity.entitlements artifact/Unity.entitlements
+          cp "${{ env.UNITY_PATH }}/Assets/Plugins/macOS/Unity.entitlements" artifact/Unity.entitlements
 
       - uses: actions/upload-artifact@v4
         with:
