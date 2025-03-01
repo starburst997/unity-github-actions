@@ -52,10 +52,13 @@ on:
         default: 'ubuntu-latest'
         type: string
       runner-sign:
-        default: 'macos-13'
+        default: 'macos-14'
         type: string
       xcode-cache:
         default: 'false'
+        type: string
+      xcode:
+        default: '/Applications/Xcode_16.2.app'
         type: string
 
 jobs:
@@ -154,6 +157,10 @@ jobs:
           bundler-cache: true
           add-platform: true
       
+      - name: Select Xcode version
+        if: ${{ inputs.xcode != '' }}
+        run: sudo xcode-select -s '${{ inputs.xcode }}'
+
       - uses: starburst997/xcode-cache@v1
         if: ${{ inputs.xcode-cache == 'true' }}
         with:
