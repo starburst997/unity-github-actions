@@ -98,6 +98,15 @@ jobs:
           path: ${{ env.UNITY_PATH }}/Library
           key: ${{ inputs.library }}
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+      - run: pip install -r requirements.txt
+
+      - name: Change package name / set IL2CPP
+        run: python scripts/workflows/update-project.py "${{ env.UNITY_PATH }}" ${{ vars.IOS_BUNDLE_ID }} ${{ vars.MAC_BUNDLE_ID }} ${{ vars.ANDROID_PACKAGE_NAME }} 1 ${{ needs.version.outputs.build }}
+
       - name: Create directory first to prevent permission error
         run:  |
           rm -Rf build
