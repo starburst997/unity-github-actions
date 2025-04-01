@@ -94,13 +94,6 @@ jobs:
           token: ${{ secrets.GH_PAT }}
           lfs: true
 
-      - uses: starburst997/ssh-agent@v0.9.0
-        env: 
-          ssh_key: ${{ secrets.SSH_PRIVATE_KEY }}
-        if: ${{ env.ssh_key != '' }}
-        with:
-          ssh-private-key: ${{ env.ssh_key }}
-
       - uses: actions/cache/restore@v4
         id: cache
         with:
@@ -128,9 +121,11 @@ jobs:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          GH_PAT: ${{ secrets.GH_PAT }}
         with:
           runAsHostUser: true
           allowDirtyBuild: true
+          gitPrivateToken: ${{ env.GH_PAT }}
           targetPlatform: StandaloneWindows64
           unityVersion: ${{ env.UNITY_VERSION }}
           projectPath: ${{ env.UNITY_PATH }}
