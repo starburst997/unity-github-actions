@@ -100,16 +100,15 @@ jobs:
           echo HAS_NUGET="${{ hashFiles(format('{0}/Packages/nuget-packages/', env.UNITY_PATH)) != '' }}" >> $GITHUB_ENV
 
       - uses: actions/cache/restore@v4
-        id: cache
         with:
           path: ${{ env.UNITY_PATH }}/Library
           key: ${{ inputs.library }}
       
-      - uses: actions/cache@v4
+      - uses: actions/cache/restore@v4
         if: ${{ env.HAS_NUGET }}
         with:
           path: ${{ env.UNITY_PATH }}/Packages/nuget-packages/InstalledPackages
-          key: ${{ format('{0}-nuget', inputs.library) }}
+          key: NuGet
 
       - uses: actions/setup-python@v5
         with:
@@ -182,6 +181,12 @@ jobs:
         with:
           path: ${{ env.UNITY_PATH }}/Library
           key: ${{ inputs.library }}
+
+      - uses: actions/cache/save@v4
+        if: always() && ${{ env.HAS_NUGET }}
+        with:
+          path: ${{ env.UNITY_PATH }}/Packages/nuget-packages/InstalledPackages
+          key: NuGet
 
   sign:
     name: Code Signing / Setup
