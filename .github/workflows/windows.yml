@@ -114,6 +114,15 @@ jobs:
           rm -Rf build
           mkdir build
 
+      - name: Restore NuGet (install)
+        if: ${{ hashFiles(env.UNITY_PATH + '/Packages/nuget-packages/') != '' }}
+        uses: actions/setup-dotnet@v4
+      - name: Restore NuGet (restore)
+        if: ${{ hashFiles(env.UNITY_PATH + '/Packages/nuget-packages/') != '' }}
+        run:  |
+          dotnet tool install --global NuGetForUnity.Cli
+          dotnet nugetforunity restore ${{ env.UNITY_PATH }}
+
       - name: Build project
         uses: starburst997/unity-builder@v4
         env:
