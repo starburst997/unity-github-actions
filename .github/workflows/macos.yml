@@ -166,9 +166,11 @@ jobs:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          GH_PAT: ${{ secrets.GH_PAT }}
         with:
           runAsHostUser: true
           allowDirtyBuild: true
+          gitPrivateToken: ${{ env.GH_PAT }}
           targetPlatform: StandaloneOSX
           unityVersion: ${{ env.UNITY_VERSION }}
           projectPath: ${{ env.UNITY_PATH }}
