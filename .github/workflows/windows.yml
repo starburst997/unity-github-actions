@@ -94,6 +94,11 @@ jobs:
           token: ${{ secrets.GH_PAT }}
           lfs: true
 
+      - uses: starburst997/ssh-agent@v0.9.0
+        if: ${{ secrets.SSH_PRIVATE_KEY != '' }}
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
       - uses: actions/cache/restore@v4
         id: cache
         with:
