@@ -117,6 +117,8 @@ jobs:
       - name: Restore NuGet (install)
         if: ${{ hashFiles(format('{0}/Packages/nuget-packages/', env.UNITY_PATH)) != '' }}
         uses: actions/setup-dotnet@v4
+        env:
+          DOTNET_INSTALL_DIR: '~/.dotnet'
         with:
           dotnet-version: '8'
           cache: true
