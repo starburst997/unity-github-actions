@@ -6,6 +6,7 @@ env:
   UNITY_VERSION: ${{ vars.APP_UNITY_VERSION }}
   DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
   DISCORD_COLOR: "#a4c639"
+  NUGET_TOOL: ${{ vars.APP_UNITY_PATH }}/Packages/nuget-packages/InstalledPackages/tools
 
 on: 
   workflow_call:
@@ -90,11 +91,21 @@ jobs:
           token: ${{ secrets.GH_PAT }}
           lfs: true
 
+      - name: Check if we use NuGet
+        run: |
+          echo HAS_NUGET="${{ hashFiles(format('{0}/Packages/nuget-packages/', env.UNITY_PATH)) != '' }}" >> $GITHUB_ENV
+
       - uses: actions/cache/restore@v4
         id: cache
         with:
           path: ${{ env.UNITY_PATH }}/Library
           key: ${{ inputs.library }}
+      
+      - uses: actions/cache/restore@v4
+        if: ${{ env.HAS_NUGET }}
+        with:
+          path: ${{ env.UNITY_PATH }}/Packages/nuget-packages/InstalledPackages
+          key: NuGet
 
       - uses: actions/setup-python@v5
         with:
@@ -109,6 +120,17 @@ jobs:
         run: |
           rm -Rf build
           mkdir build
+
+      - name: Restore NuGet (install)
+        if: ${{ env.HAS_NUGET }}
+        uses: starburst997/setup-dotnet@main
+        with:
+          dotnet-version: '8.0.407'
+      - name: Restore NuGet (restore)
+        if: ${{ env.HAS_NUGET }}
+        run:  |
+          dotnet tool install NuGetForUnity.Cli --tool-path "${{ env.NUGET_TOOL }}"
+          "${{ env.NUGET_TOOL }}/nugetforunity" restore "${{ env.UNITY_PATH }}"
 
       - name: Build project
         uses: starburst997/unity-builder@v4
@@ -155,6 +177,12 @@ jobs:
         with:
           path: ${{ env.UNITY_PATH }}/Library
           key: ${{ inputs.library }}
+
+      - uses: actions/cache/save@v4
+        if: always() && ${{ env.HAS_NUGET }}
+        with:
+          path: ${{ env.UNITY_PATH }}/Packages/nuget-packages/InstalledPackages
+          key: NuGet
 
   sign:
     name: Code Signing
