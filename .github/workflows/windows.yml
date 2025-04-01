@@ -116,12 +116,11 @@ jobs:
 
       - name: Restore NuGet (install)
         if: ${{ hashFiles(format('{0}/Packages/nuget-packages/', env.UNITY_PATH)) != '' }}
-        uses: actions/setup-dotnet@v4
-        env:
-          DOTNET_INSTALL_DIR: '~/.dotnet'
+        uses: starburst997/setup-dotnet@v4
         with:
           dotnet-version: '8'
           cache: true
+          cache-dependency-path: ${{ format('{0}/Packages/packages-lock.json', env.UNITY_PATH) }}
       - name: Restore NuGet (restore)
         if: ${{ hashFiles(format('{0}/Packages/nuget-packages/', env.UNITY_PATH)) != '' }}
         run:  |
