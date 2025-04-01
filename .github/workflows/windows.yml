@@ -133,8 +133,8 @@ jobs:
       - name: Restore NuGet (restore)
         if: ${{ env.HAS_NUGET }}
         run:  |
-          dotnet tool install NuGetForUnity.Cli --tool-path ${{ env.NUGET_TOOL }}
-          ${{ env.NUGET_TOOL }}/nugetforunity restore ${{ env.UNITY_PATH }}
+          dotnet tool install NuGetForUnity.Cli --tool-path "${{ env.NUGET_TOOL }}"
+          "${{ env.NUGET_TOOL }}/nugetforunity" restore "${{ env.UNITY_PATH }}"
 
       - name: Build project
         uses: starburst997/unity-builder@v4
