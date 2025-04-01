@@ -125,7 +125,7 @@ jobs:
         if: ${{ hashFiles(format('{0}/Packages/nuget-packages/', env.UNITY_PATH)) != '' }}
         run:  |
           dotnet tool install --global NuGetForUnity.Cli
-          dotnet nugetforunity restore ${{ env.UNITY_PATH }}
+          nugetforunity restore ${{ env.UNITY_PATH }}
 
       - name: Build project
         uses: starburst997/unity-builder@v4
