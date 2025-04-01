@@ -233,6 +233,7 @@ jobs:
       - uses: starburst997/brew-install@v1
         with:
           packages: gnu-sed graphicsmagick imagemagick
+          type: formula
 
       - uses: actions/cache@v4
         with:
