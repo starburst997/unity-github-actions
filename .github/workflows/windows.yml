@@ -129,7 +129,7 @@ jobs:
         if: ${{ env.HAS_NUGET }}
         uses: starburst997/setup-dotnet@main
         with:
-          dotnet-version: '8'
+          dotnet-version: '8.0.407'
       - name: Restore NuGet (restore)
         if: ${{ env.HAS_NUGET }}
         run:  |
