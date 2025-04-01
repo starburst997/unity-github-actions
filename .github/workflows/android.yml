@@ -151,7 +151,7 @@ jobs:
             !**/*_ButDontShipItWithYourGame
 
       - uses: actions/cache/save@v4
-        if: always() && steps.cache.outputs.cache-hit != 'true'
+        if: always()
         with:
           path: ${{ env.UNITY_PATH }}/Library
           key: ${{ inputs.library }}
