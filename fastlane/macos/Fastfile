@@ -153,7 +153,7 @@ platform :mac do
     )
 
     # Additional codesigning for plugins
-    sh("codesign --force --deep --sign \"#{ENV["sigh_#{ENV['MAC_BUNDLE_ID']}_appstore_macos_profile-name"]})\" --options runtime #{ENV['BUILD_PATH']}/appstore.app")
+    sh("codesign --force --deep --sign \"Apple Distribution\" --options runtime #{ENV['BUILD_PATH']}/appstore.app")
     sh("codesign", "-vvv", "--deep", "--strict", "#{ENV['BUILD_PATH']}/appstore.app")
   end
 
@@ -215,7 +215,7 @@ platform :mac do
     )
 
     # Additional codesigning for plugins
-    sh("codesign --force --deep --sign \"#{ENV["sigh_#{ENV['MAC_BUNDLE_ID']}_developer_id_macos_profile-name"]})\" --options runtime #{ENV['BUILD_PATH']}/developer-id.app")
+    sh("codesign --force --deep --sign \"Developer ID Application\" --options runtime #{ENV['BUILD_PATH']}/developer-id.app")
     sh("codesign", "-vvv", "--deep", "--strict", "#{ENV['BUILD_PATH']}/developer-id.app")
 
     notarize(
@@ -324,7 +324,7 @@ platform :mac do
     )
 
     # Additional codesigning for plugins
-    sh("codesign --force --deep --sign \"#{ENV["sigh_#{ENV['MAC_BUNDLE_ID']}_developer_id_macos_profile-name"]})\" --options runtime #{ENV['BUILD_PATH']}/developer-id-installer.pkg")
+    sh("codesign --force --deep --sign \"Developer ID Installer\" --options runtime #{ENV['BUILD_PATH']}/developer-id-installer.pkg")
     sh("codesign", "-vvv", "--deep", "--strict", "#{ENV['BUILD_PATH']}/developer-id-installer.pkg")
   end
 end
