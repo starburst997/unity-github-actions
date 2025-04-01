@@ -58,6 +58,9 @@ on:
       timeout:
         default: 30
         type: number
+      timeout-sign:
+        default: 20
+        type: number
       runner:
         default: 'ubuntu-latest'
         type: string
@@ -209,6 +212,7 @@ jobs:
   sign:
     name: Code Signing / DMG
     runs-on: ${{ inputs.runner-sign }}
+    timeout-minutes: ${{ inputs.timeout-sign }}
     needs: [version, build]
     steps:
       - name: Checkout Repository

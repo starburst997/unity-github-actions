@@ -46,6 +46,9 @@ on:
       timeout:
         default: 45
         type: number
+      timeout-sign:
+        default: 20
+        type: number
       runner:
         default: 'ubuntu-latest'
         type: string
@@ -176,6 +179,7 @@ jobs:
   sign:
     name: Code Signing
     runs-on: ${{ inputs.runner-sign }}
+    timeout-minutes: ${{ inputs.timeout-sign }}
     needs: [version, build]
     steps:
       - name: Checkout Repository
