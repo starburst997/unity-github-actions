@@ -95,9 +95,11 @@ jobs:
           lfs: true
 
       - uses: starburst997/ssh-agent@v0.9.0
-        if: ${{ secrets.SSH_PRIVATE_KEY != '' }}
+        env: 
+          ssh_key: ${{ secrets.MY_SECRET }}
+        if: ${{ env.ssh_key != '' }}
         with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          ssh-private-key: ${{ env.ssh_key }}
 
       - uses: actions/cache/restore@v4
         id: cache
