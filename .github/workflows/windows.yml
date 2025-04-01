@@ -115,10 +115,10 @@ jobs:
           mkdir build
 
       - name: Restore NuGet (install)
-        if: ${{ hashFiles(env.UNITY_PATH + '/Packages/nuget-packages/') != '' }}
+        if: ${{ hashFiles(format('{0}/Packages/nuget-packages/', env.UNITY_PATH)) != '' }}
         uses: actions/setup-dotnet@v4
       - name: Restore NuGet (restore)
-        if: ${{ hashFiles(env.UNITY_PATH + '/Packages/nuget-packages/') != '' }}
+        if: ${{ hashFiles(format('{0}/Packages/nuget-packages/', env.UNITY_PATH)) != '' }}
         run:  |
           dotnet tool install --global NuGetForUnity.Cli
           dotnet nugetforunity restore ${{ env.UNITY_PATH }}
