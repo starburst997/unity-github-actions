@@ -96,7 +96,7 @@ jobs:
 
       - uses: starburst997/ssh-agent@v0.9.0
         env: 
-          ssh_key: ${{ secrets.MY_SECRET }}
+          ssh_key: ${{ secrets.SSH_PRIVATE_KEY }}
         if: ${{ env.ssh_key != '' }}
         with:
           ssh-private-key: ${{ env.ssh_key }}
