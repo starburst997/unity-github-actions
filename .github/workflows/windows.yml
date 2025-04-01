@@ -116,7 +116,7 @@ jobs:
 
       - name: Restore NuGet (install)
         if: ${{ hashFiles(format('{0}/Packages/nuget-packages/', env.UNITY_PATH)) != '' }}
-        uses: starburst997/setup-dotnet
+        uses: starburst997/setup-dotnet@main
         with:
           dotnet-version: '8'
           cache: true
