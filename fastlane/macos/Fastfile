@@ -85,16 +85,6 @@ platform :mac do
     upload_to_testflight(skip_waiting_for_build_processing: false)
   end
 
-  desc "Sign all binaries in the plugins folder"
-  lane :sign_plugins do |options|
-    puts "Searching for plugins... (#{ENV['TARGET']}/Plugins/*.bundle)"
-    Dir.glob("#{ENV['TARGET']}/Plugins/*.bundle") do |plugin|
-      puts "Found plugin at: #{plugin}"
-      sh("codesign --force --deep --sign \"#{options[:identity]}\" --options runtime #{ENV['TARGET']}/Plugins/#{plugin}")
-      sh("codesign", "-vvv", "--deep", "--strict", "#{ENV['TARGET']}/Plugins/#{plugin}")
-    end
-  end
-
   desc "Create a new build using Developer ID"
   lane :developer_id do
     build_developer_id
@@ -148,15 +138,13 @@ platform :mac do
       )
     end
 
-    sign_plugins(identity: 'Apple Distribution')
-
     build_mac_app( #alias: gym
       export_method: 'app-store',
       project: "#{ENV['MAC_BUILD_PATH']}/#{ENV['XCODEPROJ_PATH']}",
       output_directory: "#{ENV['BUILD_PATH']}",
       output_name: "appstore",
       scheme: "#{ENV['PROJECT_TARGET']}",
-      xcargs: '-allowProvisioningUpdates OTHER_CODE_SIGN_FLAGS="--deep"', # --options=runtime
+      xcargs: '-allowProvisioningUpdates OTHER_CODE_SIGN_FLAGS="--deep"',
       export_options: {
         provisioningProfiles: {
           "#{ENV['MAC_BUNDLE_ID']}" => ENV["sigh_#{ENV['MAC_BUNDLE_ID']}_appstore_macos_profile-name"]
@@ -207,8 +195,6 @@ platform :mac do
         xcodeproj: "#{ENV['MAC_BUILD_PATH']}/#{ENV['XCODEPROJ_PATH']}"
       )
     end
-
-    sign_plugins(identity: 'Developer ID Application')
 
     build_mac_app( #alias: gym
       export_method: 'developer-id',
@@ -314,8 +300,6 @@ platform :mac do
         xcodeproj: "#{ENV['MAC_BUILD_PATH']}/#{ENV['XCODEPROJ_PATH']}"
       )
     end
-
-    sign_plugins(identity: 'Developer ID Installer')
 
     build_mac_app( #alias: gym
       export_method: 'package',
