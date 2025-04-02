@@ -87,7 +87,7 @@ platform :mac do
 
   desc "Sign all binaries in the plugins folder"
   lane :sign_plugins do |options|
-    puts "Searching for plugins..."
+    puts "Searching for plugins... (#{ENV['TARGET']}/Plugins/*.bundle)"
     Dir.glob("#{ENV['TARGET']}/Plugins/*.bundle") do |plugin|
       puts "Found plugin at: #{plugin}"
       sh("codesign --force --deep --sign \"#{options[:identity]}\" --options runtime #{ENV['TARGET']}/Plugins/#{plugin}")
@@ -156,7 +156,7 @@ platform :mac do
       output_directory: "#{ENV['BUILD_PATH']}",
       output_name: "appstore",
       scheme: "#{ENV['PROJECT_TARGET']}",
-      xcargs: '-allowProvisioningUpdates',
+      xcargs: '-allowProvisioningUpdates OTHER_CODE_SIGN_FLAGS="--deep"', # --options=runtime
       export_options: {
         provisioningProfiles: {
           "#{ENV['MAC_BUNDLE_ID']}" => ENV["sigh_#{ENV['MAC_BUNDLE_ID']}_appstore_macos_profile-name"]
@@ -216,7 +216,7 @@ platform :mac do
       output_directory: "#{ENV['BUILD_PATH']}",
       output_name: "developer-id",
       scheme: "#{ENV['PROJECT_TARGET']}",
-      xcargs: '-allowProvisioningUpdates',
+      xcargs: '-allowProvisioningUpdates OTHER_CODE_SIGN_FLAGS="--deep"',
       export_options: {
         provisioningProfiles: {
           "#{ENV['MAC_BUNDLE_ID']}" => ENV["sigh_#{ENV['MAC_BUNDLE_ID']}_developer_id_macos_profile-name"]
@@ -323,7 +323,7 @@ platform :mac do
       output_directory: "#{ENV['BUILD_PATH']}",
       output_name: "developer-id-installer",
       scheme: "#{ENV['PROJECT_TARGET']}",
-      xcargs: '-allowProvisioningUpdates',
+      xcargs: '-allowProvisioningUpdates OTHER_CODE_SIGN_FLAGS="--deep"',
       export_options: {
         provisioningProfiles: {
           "#{ENV['MAC_BUNDLE_ID']}" => ENV["sigh_#{ENV['MAC_BUNDLE_ID']}_developer_id_macos_profile-name"]
