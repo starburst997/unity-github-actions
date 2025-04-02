@@ -85,6 +85,16 @@ platform :mac do
     upload_to_testflight(skip_waiting_for_build_processing: false)
   end
 
+  desc "Sign all binaries in the plugins folder"
+  lane :sign_plugins do |options|
+    puts "Searching for plugins..."
+    Dir.glob("#{ENV['TARGET']}/Plugins/*.bundle") do |plugin|
+      puts "Found plugin at: #{plugin}"
+      sh("codesign --force --deep --sign \"#{options[:identity]}\" --options runtime #{ENV['TARGET']}/Plugins/#{plugin}")
+      sh("codesign", "-vvv", "--deep", "--strict", "#{ENV['TARGET']}/Plugins/#{plugin}")
+    end
+  end
+
   desc "Create a new build using Developer ID"
   lane :developer_id do
     build_developer_id
@@ -138,6 +148,8 @@ platform :mac do
       )
     end
 
+    sign_plugins(identity: 'Apple Distribution')
+
     build_mac_app( #alias: gym
       export_method: 'app-store',
       project: "#{ENV['MAC_BUILD_PATH']}/#{ENV['XCODEPROJ_PATH']}",
@@ -151,10 +163,6 @@ platform :mac do
         }
       }
     )
-
-    # Additional codesigning for plugins
-    sh("codesign --force --deep --sign \"Apple Distribution\" --options runtime #{ENV['BUILD_PATH']}/appstore.app")
-    sh("codesign", "-vvv", "--deep", "--strict", "#{ENV['BUILD_PATH']}/appstore.app")
   end
 
   desc "Create .app (Developer ID)"
@@ -200,6 +208,8 @@ platform :mac do
       )
     end
 
+    sign_plugins(identity: 'Developer ID Application')
+
     build_mac_app( #alias: gym
       export_method: 'developer-id',
       project: "#{ENV['MAC_BUILD_PATH']}/#{ENV['XCODEPROJ_PATH']}",
@@ -213,10 +223,6 @@ platform :mac do
         }
       }
     )
-
-    # Additional codesigning for plugins
-    sh("codesign --force --deep --sign \"Developer ID Application\" --options runtime #{ENV['BUILD_PATH']}/developer-id.app")
-    sh("codesign", "-vvv", "--deep", "--strict", "#{ENV['BUILD_PATH']}/developer-id.app")
 
     notarize(
       package: "#{ENV['BUILD_PATH']}/developer-id.app",
@@ -309,6 +315,8 @@ platform :mac do
       )
     end
 
+    sign_plugins(identity: 'Developer ID Installer')
+
     build_mac_app( #alias: gym
       export_method: 'package',
       project: "#{ENV['MAC_BUILD_PATH']}/#{ENV['XCODEPROJ_PATH']}",
@@ -322,9 +330,5 @@ platform :mac do
         }
       }
     )
-
-    # Additional codesigning for plugins
-    sh("codesign --force --deep --sign \"Developer ID Installer\" --options runtime #{ENV['BUILD_PATH']}/developer-id-installer.pkg")
-    sh("codesign", "-vvv", "--deep", "--strict", "#{ENV['BUILD_PATH']}/developer-id-installer.pkg")
   end
 end
