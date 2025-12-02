@@ -68,7 +68,7 @@ on:
         default: 'ubuntu-latest'
         type: string
       runner-sign:
-        default: 'macos-13'
+        default: 'macos-latest'
         type: string
       generate-appstore:
         default: 'true'

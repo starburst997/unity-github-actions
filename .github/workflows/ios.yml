@@ -56,13 +56,13 @@ on:
         default: 'ubuntu-latest'
         type: string
       runner-sign:
-        default: 'macos-14'
+        default: 'macos-latest'
         type: string
       xcode-cache:
         default: 'false'
         type: string
       xcode:
-        default: '/Applications/Xcode_16.2.app'
+        default: ''
         type: string
 
 jobs:
