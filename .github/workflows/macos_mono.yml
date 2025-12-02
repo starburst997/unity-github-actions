@@ -42,7 +42,7 @@ jobs:
     with:
       runner: 'ubuntu-latest'
       runner-extra: 'ubuntu-latest'
-      runner-sign: 'macos-13'
+      runner-sign: 'macos-latest'
       il2cpp: '0'
       library: 'Library-MacOSMono'
       artifact: 'build-macos-mono'
