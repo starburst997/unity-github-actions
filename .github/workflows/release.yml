@@ -76,13 +76,13 @@ on:
 
 jobs:
   version: # Get current version
-    uses: jd-boiv-in/yearly-version/.github/workflows/version.yml@v1
+    uses: starburst997/yearly-version/.github/workflows/version.yml@v1
     secrets: inherit
     with:
       runner: ${{ inputs.runner }}
   
   version_increment: # Increment only if release is successful
-    uses: jd-boiv-in/yearly-version/.github/workflows/version.yml@v1
+    uses: starburst997/yearly-version/.github/workflows/version.yml@v1
     needs: [release]
     secrets: inherit
     with:

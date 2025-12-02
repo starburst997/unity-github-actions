@@ -67,7 +67,7 @@ on:
 
 jobs:
   version:
-    uses: jd-boiv-in/yearly-version/.github/workflows/version.yml@v1
+    uses: starburst997/yearly-version/.github/workflows/version.yml@v1
     secrets: inherit
     with:
       increment: false
